@@ -1,5 +1,5 @@
 import { pieceById } from './rules.js';
-import { pieceAsset, pieceName, opponentOf } from './text.js';
+import { pieceEmoji, pieceName, opponentOf } from './text.js';
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -8,15 +8,16 @@ export function animateMove(boardEl, fxEl, move) {
 
   const fromCell = boardEl.querySelector(`[data-x="${move.from.x}"][data-y="${move.from.y}"]`);
   const toCell = boardEl.querySelector(`[data-x="${move.to.x}"][data-y="${move.to.y}"]`);
-  const visual = fromCell?.querySelector('.piece');
+  const visual = fromCell?.querySelector('.token');
   if (!fromCell || !toCell || !visual) return Promise.resolve();
 
   const layerRect = fxEl.getBoundingClientRect();
   const fromRect = fromCell.getBoundingClientRect();
   const toRect = toCell.getBoundingClientRect();
 
-  const ghost = visual.cloneNode(true);
+  const ghost = document.createElement('div');
   ghost.className = 'fx-ghost';
+  ghost.append(visual.cloneNode(true));
   ghost.style.width = `${fromRect.width}px`;
   ghost.style.height = `${fromRect.height}px`;
   ghost.style.transform = `translate(${fromRect.left - layerRect.left}px, ${fromRect.top - layerRect.top}px)`;
@@ -51,13 +52,13 @@ export function showBattleCutIn(event, data, names) {
   backdrop.innerHTML = `
     <div class="cutin">
       <div class="cutin-side">
-        ${cutInBadge(data, event.attacker)}
+        ${cutInBadge(data, event.attacker, event.attackerOwner)}
         <span class="cutin-owner">${names[event.attackerOwner]}</span>
         <span class="cutin-name">${pieceName(data, event.attacker)}</span>
       </div>
       <div class="cutin-vs">VS</div>
       <div class="cutin-side">
-        ${cutInBadge(data, event.defender)}
+        ${cutInBadge(data, event.defender, defenderOwner)}
         <span class="cutin-owner">${names[defenderOwner]}</span>
         <span class="cutin-name">${pieceName(data, event.defender)}</span>
       </div>
@@ -83,9 +84,7 @@ function cutInResult(event, data) {
   return '相打ち！';
 }
 
-function cutInBadge(data, typeId) {
+function cutInBadge(data, typeId, owner) {
   const def = pieceById(data, typeId);
-  const asset = pieceAsset(def);
-  if (asset) return `<img class="cutin-piece" src="${asset}" alt="${def.name}" />`;
-  return '<span class="cutin-piece cutin-emoji">🪹</span>';
+  return `<div class="token cutin-token ${owner}"><span class="token-face">${pieceEmoji(def)}</span></div>`;
 }

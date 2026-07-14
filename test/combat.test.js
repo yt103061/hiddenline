@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import battlepass from '../data/battlepass.json' with { type: 'json' };
 import piecesData from '../data/pieces.json' with { type: 'json' };
 import combat from '../data/combat_matrix.json' with { type: 'json' };
+import boards from '../data/boards.json' with { type: 'json' };
 import { createGame } from '../src/state.js';
-import { applyMove, generateMovesForPiece, resolveCombat } from '../src/rules.js';
+import { applyMove, bridgeEdges, generateMovesForPiece, resolveCombat } from '../src/rules.js';
 
 const attackers = Object.keys(combat.matrix);
 const defenders = piecesData.pieces.map((piece) => piece.id).filter((id) => id !== 'base');
@@ -64,5 +65,53 @@ const trapState = {
 const afterTrap = applyMove(trapState, { pieceId: 'lion', from: { x: 0, y: 1 }, to: { x: 0, y: 0 }, targetId: 'trap' }, piecesData, combat);
 assert.equal(afterTrap.pieces.find((piece) => piece.id === 'lion').alive, false, 'attacker dies to trap');
 assert.equal(afterTrap.pieces.find((piece) => piece.id === 'trap').alive, false, 'trap self-removes after successful defense');
+
+const bridgeBoard = { cols: 6, rows: 6, riverRow: 3, bridgeIslands: [1, 4] };
+const bridgeState = {
+  board: bridgeBoard,
+  turn: 'south',
+  pieces: [
+    { id: 'w', owner: 'south', type: 'rank_04', x: 0, y: 3, alive: true },
+    { id: 'e', owner: 'south', type: 'sp_eagle', x: 1, y: 3, alive: true },
+    { id: 'r', owner: 'south', type: 'rank_09', x: 4, y: 3, alive: true },
+  ],
+};
+
+assert.ok(
+  generateMovesForPiece(bridgeState, bridgeState.pieces[0], piecesData).some((move) => move.to.x === 1 && move.to.y === 2),
+  'bank piece steps diagonally onto the island',
+);
+assert.ok(
+  generateMovesForPiece(bridgeState, bridgeState.pieces[1], piecesData).some((move) => move.to.x === 1 && move.to.y === 1),
+  'eagle flies straight over the river without using the bridge',
+);
+assert.ok(
+  !generateMovesForPiece(bridgeState, bridgeState.pieces[2], piecesData).some((move) => move.to.y <= 2),
+  'non-flyer off the bridge cannot cross the river',
+);
+
+const islandState = {
+  board: bridgeBoard,
+  turn: 'south',
+  pieces: [{ id: 'i', owner: 'south', type: 'rank_04', x: 1, y: 2, alive: true }],
+};
+assert.deepEqual(
+  generateMovesForPiece(islandState, islandState.pieces[0], piecesData).map((move) => `${move.to.x},${move.to.y}`).sort(),
+  ['0,1', '0,3', '2,1', '2,3'],
+  'island piece can only step diagonally to the four bank cells',
+);
+
+for (const mode of ['casual', 'classic']) {
+  const bankCells = new Set(bridgeEdges(boards[mode]).flatMap((bridge) => bridge.banks.map((bank) => `${bank.x},${bank.y}`)));
+  for (const preset of ['balanced', 'attack', 'defense']) {
+    const game = createGame(mode, preset);
+    for (const piece of game.pieces) {
+      if (['trap', 'base'].includes(piece.type)) {
+        assert.ok(!bankCells.has(`${piece.x},${piece.y}`), `${mode}/${preset}: ${piece.type} must not start on a bridge bank`);
+      }
+      assert.notEqual(piece.y, game.board.riverRow - 1, `${mode}/${preset}: no piece starts on the water row`);
+    }
+  }
+}
 
 console.log('combat matrix, data integrity, and core movement tests passed');

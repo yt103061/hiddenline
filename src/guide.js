@@ -1,4 +1,4 @@
-import { pieceAsset, MOVE_TEXT, ROLE_TEXT } from './text.js';
+import { pieceEmoji, MOVE_TEXT, ROLE_TEXT } from './text.js';
 
 const MOVE_DOTS = {
   step1: [[0, -1], [0, 1], [-1, 0], [1, 0]],
@@ -32,11 +32,12 @@ function buildGuide(data) {
       </ul>
     </section>
     <section class="guide-section">
-      <h3>🌊 川と渡河点</h3>
+      <h3>🌊 川と突入口</h3>
       <ul>
-        <li>盤の中央には<strong>川</strong>が流れています。</li>
-        <li>川を渡れるのは<strong>金色の枠のマス（渡河点）</strong>だけです。</li>
-        <li>ワシだけは渡河点を使わずに川を飛び越えられます。</li>
+        <li>盤の中央には<strong>川</strong>が流れていて、そのままでは渡れません。</li>
+        <li>左右2か所に<strong>中州（飛び石）</strong>があります。岸のマスから中州へ、中州から対岸の岸へ、ななめに1マスずつ進むことで渡れます。</li>
+        <li>どの動物も、この突入口を使えば川を渡れます。</li>
+        <li>ワシ🦅だけは突入口を使わず、川をまっすぐ飛び越えられます。</li>
       </ul>
     </section>
     <section class="guide-section">
@@ -57,10 +58,7 @@ function buildGuide(data) {
 }
 
 function pieceCard(def, data) {
-  const asset = pieceAsset(def);
-  const badge = asset
-    ? `<img class="guide-badge" src="${asset}" alt="${def.name}" />`
-    : '<span class="guide-badge guide-emoji">🪹</span>';
+  const badge = `<div class="token guide-badge"><span class="token-face">${pieceEmoji(def)}</span></div>`;
   const casual = data.casualPieceSet.includes(def.id) ? '<span class="guide-casual">🌱</span>' : '';
   const rank = def.role === 'general' ? `<span class="guide-rank">強さ${def.rankOrder}</span>` : '';
 

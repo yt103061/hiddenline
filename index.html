@@ -9,6 +9,9 @@
   </head>
   <body data-screen="home">
     <section id="screen-home" class="screen">
+      <div class="hero-animals" aria-hidden="true">
+        <span>🦁</span><span>🦊</span><span>🐰</span><span>🦅</span><span>🐍</span><span>🐭</span>
+      </div>
       <img class="home-logo" src="assets/logo.svg" alt="HIDDEN LINE" />
       <p class="tagline">正体をかくした動物たちの、推理と駆け引きのボードゲーム</p>
 
@@ -40,7 +43,7 @@
             <label class="option-card">
               <input type="radio" name="mode" value="classic" />
               <span class="option-title">🌳 クラシック</span>
-              <span class="option-desc">6×8の盤・各23駒。全部の動物が登場。約15分。</span>
+              <span class="option-desc">6×9の盤・各23駒。全部の動物が登場。約15分。</span>
             </label>
           </div>
         </fieldset>
@@ -110,9 +113,14 @@
       </header>
       <p id="status" role="status">駒を選択してください。</p>
       <main id="app">
-        <div class="board-wrap">
-          <div class="board" id="board"></div>
-          <div class="fx-layer" id="fx" aria-hidden="true"></div>
+        <div class="stage">
+          <div id="hudTop" class="hud-player"></div>
+          <div class="board-wrap">
+            <div class="board" id="board"></div>
+            <svg id="bridges" class="bridge-layer" aria-hidden="true"></svg>
+            <div class="fx-layer" id="fx" aria-hidden="true"></div>
+          </div>
+          <div id="hudBottom" class="hud-player"></div>
         </div>
         <aside id="side">
           <section>

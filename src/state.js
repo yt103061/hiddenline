@@ -1,5 +1,6 @@
 import boards from '../data/boards.json' with { type: 'json' };
 import piecesData from '../data/pieces.json' with { type: 'json' };
+import { bridgeEdges } from './rules.js';
 
 export function createGame(mode = 'casual', preset = 'balanced') {
   const board = boards[mode];
@@ -28,7 +29,7 @@ export function formation(pieceList, preset, owner, board) {
     ? [...board.deployRows].reverse()
     : board.deployRows.map((row) => board.rows - 1 - row).sort((a, b) => a - b);
   const cells = deploymentCells(rows, owner, board, sorted.length);
-  keepStaticPiecesOffCrossings(sorted, cells, board);
+  keepStaticPiecesOffBridgeEnds(sorted, cells, board);
 
   return sorted.map((item, index) => ({
     id: `${owner}_${item.type}_${item.index}`,
@@ -89,15 +90,20 @@ export function revealForViewer(state, viewer) {
   };
 }
 
-function keepStaticPiecesOffCrossings(sorted, cells, board) {
+function keepStaticPiecesOffBridgeEnds(sorted, cells, board) {
+  const blocked = new Set(
+    bridgeEdges(board).flatMap((bridge) => bridge.banks.map((bank) => `${bank.x},${bank.y}`)),
+  );
+  const isBlocked = (index) => blocked.has(`${cells[index].x},${cells[index].y}`);
+
   for (let index = 0; index < sorted.length; index += 1) {
     if (!['trap', 'base'].includes(sorted[index].type)) continue;
-    if (!board.crossings.includes(cells[index].x)) continue;
+    if (!isBlocked(index)) continue;
 
     const swapIndex = cells.findIndex((cell, candidateIndex) =>
-      candidateIndex > index
+      candidateIndex !== index
       && candidateIndex < sorted.length
-      && !board.crossings.includes(cell.x)
+      && !isBlocked(candidateIndex)
       && !['trap', 'base'].includes(sorted[candidateIndex].type),
     );
     if (swapIndex !== -1) [sorted[index], sorted[swapIndex]] = [sorted[swapIndex], sorted[index]];

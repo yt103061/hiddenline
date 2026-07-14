@@ -4,7 +4,7 @@ import { createGame } from './state.js';
 import { applyMove, generateMovesForPiece, pieceById } from './rules.js';
 import { chooseAiMove } from './ai.js';
 import { grantBattlePoints } from './battlepass.js';
-import { renderBoard, updateSelection, renderLog, renderInfo, message } from './render.js';
+import { renderBoard, updateSelection, renderLog, renderInfo, renderBridges, renderHud, message } from './render.js';
 import { animateMove, showBattleCutIn } from './fx.js';
 import { openGuide } from './guide.js';
 import {
@@ -28,6 +28,9 @@ const ui = {
 const el = {
   board: document.querySelector('#board'),
   fx: document.querySelector('#fx'),
+  bridges: document.querySelector('#bridges'),
+  hudTop: document.querySelector('#hudTop'),
+  hudBottom: document.querySelector('#hudBottom'),
   log: document.querySelector('#battleLog'),
   info: document.querySelector('#moveCount'),
   handover: document.querySelector('#handover'),
@@ -51,6 +54,8 @@ function cancelPendingAi() {
 function redraw() {
   renderBoard(el.board, state, piecesData, ui, { onCell, onInspect });
   updateSelection(el.board, ui);
+  renderBridges(el.bridges, state.board, ui.viewer);
+  renderHud(el, state, piecesData, ui);
   renderLog(el.log, state, piecesData, ui.names);
   renderInfo(el.info, state);
 }

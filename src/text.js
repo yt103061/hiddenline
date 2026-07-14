@@ -1,6 +1,25 @@
 import { pieceById } from './rules.js';
 
-export const BACK_ASSET = 'assets/piece_back.svg';
+export const PIECE_EMOJI = {
+  rank_01: '🦁',
+  rank_02: '🐯',
+  rank_03: '🐻',
+  rank_04: '🐺',
+  rank_05: '🐆',
+  rank_06: '🐗',
+  rank_07: '🦊',
+  rank_08: '🦝',
+  rank_09: '🐰',
+  sp_deer: '🦌',
+  sp_snake: '🐍',
+  sp_eagle: '🦅',
+  sp_rhino: '🦏',
+  sp_mouse: '🐭',
+  trap: '🐝',
+  base: '🪹',
+};
+
+export const BACK_EMOJI = '🍂';
 
 export const RESULT_TEXT = {
   WIN: '勝ち',
@@ -19,7 +38,7 @@ export const MOVE_TEXT = {
   step1: '前後左右に1マス',
   cavalry: '前に2マス、または横・後ろに1マス',
   runner: '縦横にまっすぐ何マスでも（駒は飛び越えられない）',
-  flyer: '縦に何マスでも＋横に1マス。川を渡河点なしで越えられる',
+  flyer: '縦に何マスでも＋横に1マス。川をまっすぐ飛び越えられる',
   none: '動けない',
 };
 
@@ -41,10 +60,8 @@ export function pieceName(data, typeId) {
   return pieceById(data, typeId)?.name ?? typeId;
 }
 
-export function pieceAsset(def) {
-  if (!def || def.id === 'base') return null;
-  if (def.id === 'trap') return 'assets/char_wasptrap.svg';
-  return `assets/char_${def.en}.svg`;
+export function pieceEmoji(def) {
+  return PIECE_EMOJI[def?.id] ?? '❓';
 }
 
 export function opponentOf(owner) {

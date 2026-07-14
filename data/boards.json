@@ -3,9 +3,8 @@
     "cols": 6,
     "rows": 6,
     "riverRow": 3,
-    "crossings": [
+    "bridgeIslands": [
       1,
-      3,
       4
     ],
     "deployRows": [
@@ -18,20 +17,19 @@
   },
   "classic": {
     "cols": 6,
-    "rows": 8,
-    "riverRow": 4,
-    "crossings": [
+    "rows": 9,
+    "riverRow": 5,
+    "bridgeIslands": [
       1,
-      3,
       4
     ],
     "deployRows": [
-      5,
       6,
-      7
+      7,
+      8
     ],
     "baseAllowedRows": [
-      7
+      8
     ]
   },
   "turnTimeSec": 15,

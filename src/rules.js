@@ -13,21 +13,43 @@ export function inBounds(board, pos) {
   return pos.x >= 0 && pos.y >= 0 && pos.x < board.cols && pos.y < board.rows;
 }
 
-export function riverBetween(board, from, to) {
-  if (from.x !== to.x) return false;
-  const top = Math.min(from.y, to.y);
-  const bottom = Math.max(from.y, to.y);
-  return top < board.riverRow && bottom >= board.riverRow;
+export function waterRowY(board) {
+  return board.riverRow - 1;
 }
 
-export function isCrossing(board, pos) {
-  return board.crossings.includes(pos.x);
+export function isIsland(board, pos) {
+  return pos.y === waterRowY(board) && (board.bridgeIslands ?? []).includes(pos.x);
+}
+
+export function isWater(board, pos) {
+  return pos.y === waterRowY(board) && !isIsland(board, pos);
+}
+
+export function bridgeEdges(board) {
+  const waterY = waterRowY(board);
+  return (board.bridgeIslands ?? []).map((x) => ({
+    island: { x, y: waterY },
+    banks: [
+      { x: x - 1, y: waterY - 1 },
+      { x: x + 1, y: waterY - 1 },
+      { x: x - 1, y: waterY + 1 },
+      { x: x + 1, y: waterY + 1 },
+    ],
+  }));
+}
+
+function spansWaterRow(board, from, to) {
+  if (from.x !== to.x) return false;
+  const waterY = waterRowY(board);
+  return Math.min(from.y, to.y) < waterY && Math.max(from.y, to.y) > waterY;
 }
 
 export function canEnter(board, from, to, moveType) {
   if (!inBounds(board, to)) return false;
   if (moveType === 'flyer') return true;
-  if (riverBetween(board, from, to)) return isCrossing(board, to) || isCrossing(board, from);
+  if (isWater(board, to)) return false;
+  if (isIsland(board, from) || isIsland(board, to)) return false;
+  if (spansWaterRow(board, from, to)) return false;
   return true;
 }
 
@@ -74,6 +96,14 @@ export function generateMovesForPiece(state, piece, data) {
     return !occupant;
   };
 
+  const addBridge = (x, y) => {
+    const to = { x, y };
+    if (!inBounds(board, to)) return;
+    const occupant = occupantAt(state, to);
+    if (occupant?.owner === piece.owner) return;
+    moves.push({ pieceId: piece.id, from: { x: piece.x, y: piece.y }, to, targetId: occupant?.id ?? null, via: 'bridge' });
+  };
+
   if (definition.move === 'step1') {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) add(piece.x + dx, piece.y + dy);
   }
@@ -85,9 +115,24 @@ export function generateMovesForPiece(state, piece, data) {
   if (definition.move === 'runner' || definition.move === 'flyer') {
     for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
       for (let distance = 1; ; distance += 1) {
+        const x = piece.x + dx * distance;
+        const y = piece.y + dy * distance;
         if (definition.move === 'flyer' && dx !== 0 && distance > 1) break;
-        if (!add(piece.x + dx * distance, piece.y + dy * distance, true)) break;
+        if (definition.move === 'flyer' && isWater(board, { x, y })) {
+          if (!inBounds(board, { x, y })) break;
+          continue;
+        }
+        if (!add(x, y, true)) break;
       }
+    }
+  }
+
+  for (const bridge of bridgeEdges(board)) {
+    if (piece.x === bridge.island.x && piece.y === bridge.island.y) {
+      for (const bank of bridge.banks) addBridge(bank.x, bank.y);
+    } else {
+      const fromBank = bridge.banks.some((bank) => bank.x === piece.x && bank.y === piece.y);
+      if (fromBank) addBridge(bridge.island.x, bridge.island.y);
     }
   }
 
