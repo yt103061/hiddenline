@@ -1,0 +1,212 @@
+{
+  "pieces": [
+    {
+      "id": "rank_01",
+      "name": "ライオン",
+      "en": "lion",
+      "rankOrder": 1,
+      "count_classic": 1,
+      "count_casual": 1,
+      "canCapture": true,
+      "move": "step1",
+      "role": "general"
+    },
+    {
+      "id": "rank_02",
+      "name": "トラ",
+      "en": "tiger",
+      "rankOrder": 2,
+      "count_classic": 1,
+      "count_casual": 0,
+      "canCapture": true,
+      "move": "step1",
+      "role": "general"
+    },
+    {
+      "id": "rank_03",
+      "name": "ヒグマ",
+      "en": "bear",
+      "rankOrder": 3,
+      "count_classic": 1,
+      "count_casual": 0,
+      "canCapture": true,
+      "move": "step1",
+      "role": "general"
+    },
+    {
+      "id": "rank_04",
+      "name": "オオカミ",
+      "en": "wolf",
+      "rankOrder": 4,
+      "count_classic": 1,
+      "count_casual": 1,
+      "canCapture": true,
+      "move": "step1",
+      "role": "general"
+    },
+    {
+      "id": "rank_05",
+      "name": "ヒョウ",
+      "en": "leopard",
+      "rankOrder": 5,
+      "count_classic": 1,
+      "count_casual": 0,
+      "canCapture": true,
+      "move": "step1",
+      "role": "general"
+    },
+    {
+      "id": "rank_06",
+      "name": "イノシシ",
+      "en": "boar",
+      "rankOrder": 6,
+      "count_classic": 1,
+      "count_casual": 1,
+      "canCapture": true,
+      "move": "step1",
+      "role": "general"
+    },
+    {
+      "id": "rank_07",
+      "name": "キツネ",
+      "en": "fox",
+      "rankOrder": 7,
+      "count_classic": 2,
+      "count_casual": 1,
+      "canCapture": false,
+      "move": "step1",
+      "role": "officer"
+    },
+    {
+      "id": "rank_08",
+      "name": "タヌキ",
+      "en": "raccoon",
+      "rankOrder": 8,
+      "count_classic": 2,
+      "count_casual": 0,
+      "canCapture": false,
+      "move": "step1",
+      "role": "officer"
+    },
+    {
+      "id": "rank_09",
+      "name": "ウサギ",
+      "en": "rabbit",
+      "rankOrder": 9,
+      "count_classic": 2,
+      "count_casual": 1,
+      "canCapture": false,
+      "move": "step1",
+      "role": "officer"
+    },
+    {
+      "id": "sp_deer",
+      "name": "シカ",
+      "en": "deer",
+      "rankOrder": 50,
+      "count_classic": 1,
+      "count_casual": 0,
+      "canCapture": false,
+      "move": "cavalry",
+      "role": "special"
+    },
+    {
+      "id": "sp_snake",
+      "name": "ヘビ",
+      "en": "snake",
+      "rankOrder": 51,
+      "count_classic": 1,
+      "count_casual": 1,
+      "canCapture": false,
+      "move": "step1",
+      "role": "special"
+    },
+    {
+      "id": "sp_eagle",
+      "name": "ワシ",
+      "en": "eagle",
+      "rankOrder": 52,
+      "count_classic": 2,
+      "count_casual": 1,
+      "canCapture": false,
+      "move": "flyer",
+      "role": "special"
+    },
+    {
+      "id": "sp_rhino",
+      "name": "サイ",
+      "en": "rhino",
+      "rankOrder": 53,
+      "count_classic": 2,
+      "count_casual": 0,
+      "canCapture": false,
+      "move": "cavalry",
+      "role": "special"
+    },
+    {
+      "id": "sp_mouse",
+      "name": "ネズミ",
+      "en": "mouse",
+      "rankOrder": 54,
+      "count_classic": 2,
+      "count_casual": 1,
+      "canCapture": false,
+      "move": "runner",
+      "role": "special"
+    },
+    {
+      "id": "trap",
+      "name": "ハチの巣",
+      "en": "trap",
+      "rankOrder": 98,
+      "count_classic": 2,
+      "count_casual": 1,
+      "canCapture": false,
+      "move": "none",
+      "role": "trap"
+    },
+    {
+      "id": "base",
+      "name": "巣",
+      "en": "base",
+      "rankOrder": 99,
+      "count_classic": 1,
+      "count_casual": 1,
+      "canCapture": false,
+      "move": "none",
+      "role": "base"
+    }
+  ],
+  "moveDefs": {
+    "step1": "orthogonal 1 tile",
+    "cavalry": "forward 2 tiles OR back/side 1 tile, no jump",
+    "flyer": "vertical multi-tile straight (no jump) + horizontal 1, may cross river without using crossing point",
+    "runner": "vertical/horizontal multi-tile straight, no turn, no jump",
+    "none": "cannot move"
+  },
+  "captureEligible_classic": [
+    "rank_01",
+    "rank_02",
+    "rank_03",
+    "rank_04",
+    "rank_05",
+    "rank_06"
+  ],
+  "captureEligible_casual": [
+    "rank_01",
+    "rank_04",
+    "rank_06"
+  ],
+  "casualPieceSet": [
+    "rank_01",
+    "rank_04",
+    "rank_06",
+    "rank_07",
+    "rank_09",
+    "sp_snake",
+    "sp_mouse",
+    "sp_eagle",
+    "trap",
+    "base"
+  ]
+}

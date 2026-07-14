@@ -1,0 +1,640 @@
+{
+  "seasonDays": 28,
+  "levels": 50,
+  "prices": {
+    "basic": 600,
+    "premium": 1200
+  },
+  "currencies": {
+    "soft": "acorn",
+    "hard": "gem"
+  },
+  "progression": "play-based (BP granted regardless of win/loss)",
+  "noRandomRewards": true,
+  "rewardTable": [
+    {
+      "lv": 1,
+      "free": {
+        "acorn": 50
+      },
+      "basic": {
+        "stamp": "season_open"
+      },
+      "premium": {
+        "avatar": "limited_01",
+        "gem": 30
+      }
+    },
+    {
+      "lv": 2,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 3,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 4,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "stamp": "premium_04"
+      }
+    },
+    {
+      "lv": 5,
+      "free": {
+        "skinShard": 10
+      },
+      "basic": {
+        "skin": "season_A"
+      },
+      "premium": {
+        "skin": "season_A",
+        "effect": "win_A"
+      }
+    },
+    {
+      "lv": 6,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 7,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 8,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "stamp": "premium_08"
+      }
+    },
+    {
+      "lv": 9,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 10,
+      "free": {
+        "stamp": "basic_01"
+      },
+      "basic": {
+        "acorn": 300
+      },
+      "premium": {
+        "gem": 50,
+        "board": "board_A"
+      }
+    },
+    {
+      "lv": 11,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 12,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "stamp": "premium_12"
+      }
+    },
+    {
+      "lv": 13,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 14,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 15,
+      "free": {
+        "wildcard": 1
+      },
+      "basic": {
+        "avatarFrame": "frame_01"
+      },
+      "premium": {
+        "skin": "premium_B"
+      }
+    },
+    {
+      "lv": 16,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "stamp": "premium_16"
+      }
+    },
+    {
+      "lv": 17,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 18,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 19,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 20,
+      "free": {
+        "acorn": 100
+      },
+      "basic": {
+        "skinShard": 30
+      },
+      "premium": {
+        "stampSet": "taunt_voice"
+      }
+    },
+    {
+      "lv": 21,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 22,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 23,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 24,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "stamp": "premium_24"
+      }
+    },
+    {
+      "lv": 25,
+      "free": {
+        "skinShard": 20
+      },
+      "basic": {
+        "skin": "season_C"
+      },
+      "premium": {
+        "skin": "season_C",
+        "effect": "effect_B",
+        "gem": 80
+      }
+    },
+    {
+      "lv": 26,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 27,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 28,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "stamp": "premium_28"
+      }
+    },
+    {
+      "lv": 29,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 30,
+      "free": {
+        "stamp": "basic_02"
+      },
+      "basic": {
+        "acorn": 400
+      },
+      "premium": {
+        "board": "board_B"
+      }
+    },
+    {
+      "lv": 31,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 32,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "stamp": "premium_32"
+      }
+    },
+    {
+      "lv": 33,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 34,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 35,
+      "free": {
+        "wildcard": 1
+      },
+      "basic": {
+        "avatar": "avatar_02"
+      },
+      "premium": {
+        "skin": "premium_D"
+      }
+    },
+    {
+      "lv": 36,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "stamp": "premium_36"
+      }
+    },
+    {
+      "lv": 37,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 38,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 39,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 40,
+      "free": {
+        "acorn": 150
+      },
+      "basic": {
+        "skinShard": 40
+      },
+      "premium": {
+        "gem": 100
+      }
+    },
+    {
+      "lv": 41,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 42,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 43,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 44,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "stamp": "premium_44"
+      }
+    },
+    {
+      "lv": 45,
+      "free": {
+        "skinShard": 30
+      },
+      "basic": {
+        "effect": "effect_plain"
+      },
+      "premium": {
+        "effect": "effect_C"
+      }
+    },
+    {
+      "lv": 46,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 47,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 48,
+      "free": {
+        "skinShard": 5
+      },
+      "basic": {
+        "skinShard": 12
+      },
+      "premium": {
+        "stamp": "premium_48"
+      }
+    },
+    {
+      "lv": 49,
+      "free": {
+        "acorn": 25
+      },
+      "basic": {
+        "acorn": 80
+      },
+      "premium": {
+        "gem": 10
+      }
+    },
+    {
+      "lv": 50,
+      "free": {
+        "acorn": 300,
+        "title": "season_finisher"
+      },
+      "basic": {
+        "skin": "season_E",
+        "title": "season_master"
+      },
+      "premium": {
+        "skin": "top_F",
+        "effect": "exclusive",
+        "gem": 150,
+        "title": "animated_master"
+      }
+    }
+  ],
+  "missions": {
+    "daily": [
+      "対戦を2回プレイする",
+      "ネズミでワナを1回撤去する",
+      "ヘビでライオンを1回仕留める",
+      "ワシで敵駒を2体倒す"
+    ],
+    "weekly": [
+      "今週10試合プレイ",
+      "ランク戦で3勝",
+      "本格版クラシックを1回クリア",
+      "巣占領で勝利を3回"
+    ]
+  }
+}

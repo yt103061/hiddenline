@@ -1,0 +1,8 @@
+{
+  "type": "module",
+  "scripts": {
+    "test": "node test/combat.test.js",
+    "start": "python3 -m http.server 8000"
+  },
+  "devDependencies": {}
+}
