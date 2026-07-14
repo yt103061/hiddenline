@@ -1,70 +1,102 @@
-import { generateLegalMoves } from './rules.js';
+import { pieceById } from './rules.js';
+import { BACK_ASSET, pieceAsset, cellTitle, logLine, moveCountText } from './text.js';
 
-const EMOJI = {
-  rank_01: '🦁',
-  rank_02: '🐯',
-  rank_03: '🐻',
-  rank_04: '🐺',
-  rank_05: '🐆',
-  rank_06: '🐗',
-  rank_07: '🦊',
-  rank_08: '🦝',
-  rank_09: '🐰',
-  sp_deer: '🦌',
-  sp_snake: '🐍',
-  sp_eagle: '🦅',
-  sp_rhino: '🦏',
-  sp_mouse: '🐭',
-  trap: '🐝',
-  base: '🪹',
-};
+export function renderBoard(boardEl, state, data, ui, handlers = {}) {
+  boardEl.innerHTML = '';
+  boardEl.style.setProperty('--cols', state.board.cols);
+  boardEl.style.setProperty('--rows', state.board.rows);
+  boardEl.classList.toggle('flipped', ui.viewer === 'north');
 
-export function render(root, state, data, handlers = {}) {
-  const legal = generateLegalMoves(state, data, 'south');
-  root.innerHTML = `
-    <section class="top">
-      <h1>アニマルライン <span>HIDDEN LINE</span></h1>
-      <p>Turn: ${state.turn} / Move ${state.moveCount}${state.winner ? ` / Winner: ${state.winner} (${state.reason})` : ''}</p>
-    </section>
-    <div class="board ${state.mode}" style="--cols:${state.board.cols};--rows:${state.board.rows}"></div>
-    <aside>
-      <h2>推理メモ</h2>
-      <p>戦闘した敵駒は以後表向き。長押し/右クリックで履歴を確認。</p>
-      <ol>${(state.log || []).slice(-6).map((event) => `<li>${event.attacker} vs ${event.defender}: ${event.result}</li>`).join('')}</ol>
-    </aside>`;
-
-  const board = root.querySelector('.board');
-  for (let y = 0; y < state.board.rows; y += 1) {
-    for (let x = 0; x < state.board.cols; x += 1) {
-      board.append(createCell(state, x, y, legal, handlers));
+  const ys = range(state.board.rows, ui.viewer === 'north');
+  const xs = range(state.board.cols, ui.viewer === 'north');
+  for (const y of ys) {
+    for (const x of xs) {
+      boardEl.append(createCell(state, data, x, y, ui, handlers));
     }
   }
 }
 
-function createCell(state, x, y, legal, handlers) {
+function range(count, reversed) {
+  const values = Array.from({ length: count }, (_, index) => index);
+  return reversed ? values.reverse() : values;
+}
+
+function createCell(state, data, x, y, ui, handlers) {
   const piece = state.pieces.find((candidate) => candidate.alive && candidate.x === x && candidate.y === y);
   const river = y === state.board.riverRow - 1;
   const crossing = state.board.crossings.includes(x);
   const cell = document.createElement('button');
 
+  cell.type = 'button';
   cell.className = `cell ${river ? 'river' : ''} ${crossing ? 'crossing' : ''}`;
   cell.dataset.x = x;
   cell.dataset.y = y;
 
-  if (piece) {
-    cell.classList.add(piece.owner);
-    cell.dataset.pid = piece.id;
-    cell.textContent = piece.owner === 'south' || piece.revealed ? EMOJI[piece.type] : '🍂';
-    cell.title = `${piece.owner} ${piece.revealed || piece.owner === 'south' ? piece.type : 'hidden'}`;
+  if (ui.lastMove) {
+    if (ui.lastMove.from.x === x && ui.lastMove.from.y === y) cell.classList.add('last-from');
+    if (ui.lastMove.to.x === x && ui.lastMove.to.y === y) cell.classList.add('last-to');
   }
 
-  cell.onclick = () => handlers.onCell?.(x, y, piece, legal);
+  if (piece) {
+    const def = pieceById(data, piece.type);
+    const hidden = piece.owner !== ui.viewer && !piece.revealed;
+
+    cell.classList.add(piece.owner);
+    cell.dataset.pid = piece.id;
+    cell.title = cellTitle(piece, def, ui.viewer, ui.names);
+
+    if (hidden) {
+      cell.append(pieceImage(BACK_ASSET, '伏せ駒'));
+    } else if (piece.type === 'base') {
+      cell.classList.add('base-cell');
+      cell.textContent = '🪹';
+    } else {
+      cell.append(pieceImage(pieceAsset(def), def.name));
+    }
+  }
+
+  cell.onclick = () => handlers.onCell?.(x, y, piece);
   cell.oncontextmenu = (event) => {
     event.preventDefault();
     handlers.onInspect?.(piece);
   };
 
   return cell;
+}
+
+function pieceImage(src, alt) {
+  const img = document.createElement('img');
+  img.className = 'piece';
+  img.src = src;
+  img.alt = alt;
+  img.draggable = false;
+  return img;
+}
+
+export function updateSelection(boardEl, ui) {
+  for (const cell of boardEl.querySelectorAll('.sel, .move-dot, .attack-target')) {
+    cell.classList.remove('sel', 'move-dot', 'attack-target');
+  }
+
+  if (!ui.selected) return;
+
+  boardEl.querySelector(`[data-pid="${ui.selected}"]`)?.classList.add('sel');
+  for (const move of ui.selectedMoves) {
+    const cell = boardEl.querySelector(`[data-x="${move.to.x}"][data-y="${move.to.y}"]`);
+    cell?.classList.add(move.targetId ? 'attack-target' : 'move-dot');
+  }
+}
+
+export function renderLog(logEl, state, data, names) {
+  logEl.innerHTML = (state.log || [])
+    .slice(-6)
+    .reverse()
+    .map((event) => `<li>${logLine(event, data, names)}</li>`)
+    .join('');
+}
+
+export function renderInfo(infoEl, state) {
+  infoEl.textContent = moveCountText(state);
 }
 
 export function message(text) {

@@ -37,7 +37,7 @@ export function formation(pieceList, preset, owner, board) {
     x: cells[index].x,
     y: cells[index].y,
     alive: true,
-    revealed: owner === 'south',
+    revealed: false,
     history: [],
   }));
 }

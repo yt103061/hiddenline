@@ -132,7 +132,7 @@ export function applyMove(state, move, data, combat) {
     next.reason = 'base';
   } else {
     const combatResult = resolveCombat(combat, piece.type, target.type);
-    const event = { attacker: piece.type, defender: target.type, result: combatResult.result };
+    const event = { attacker: piece.type, defender: target.type, result: combatResult.result, attackerOwner: piece.owner };
 
     target.revealed = true;
     piece.revealed = true;
