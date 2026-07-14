@@ -1,0 +1,110 @@
+:root {
+  color: #fff7df;
+  background: #173d2f;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+}
+
+.site-header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.site-header img {
+  width: 220px;
+  max-width: 45vw;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.controls label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.top h1 {
+  margin: 0.2rem 0;
+  color: #ffd166;
+}
+
+.top span {
+  color: #f4a261;
+  font-size: 0.7em;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(44px, 72px));
+  grid-template-rows: repeat(var(--rows), minmax(44px, 72px));
+  gap: 5px;
+  width: max-content;
+  padding: 12px;
+  border: 4px solid #d9844a;
+  border-radius: 18px;
+  background: #24533d;
+}
+
+.cell {
+  border: 2px solid #3b6d50;
+  border-radius: 14px;
+  background: #f6e7b2;
+  cursor: pointer;
+  font-size: 2rem;
+}
+
+.cell.river {
+  background: #77c7d9;
+}
+
+.cell.crossing {
+  box-shadow: inset 0 0 0 5px #c79649;
+}
+
+.cell.north {
+  background: #dfe8bb;
+}
+
+.cell.south {
+  background: #ffd6a5;
+}
+
+main {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+aside {
+  max-width: 320px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #214b39;
+}
+
+select,
+button {
+  margin: 3px;
+  padding: 8px;
+  border: 0;
+  border-radius: 999px;
+}
+
+button {
+  color: white;
+  background: #e76f51;
+  font-weight: 700;
+}

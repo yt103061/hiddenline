@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>アニマルライン / HIDDEN LINE</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <img src="assets/logo.svg" alt="HIDDEN LINE logo" />
+      <div class="controls" aria-label="対局設定">
+        <label>
+          モード
+          <select id="mode">
+            <option value="casual">カジュアル 6x6</option>
+            <option value="classic">クラシック 8x6</option>
+          </select>
+        </label>
+        <label>
+          布陣
+          <select id="preset">
+            <option value="balanced">バランス型</option>
+            <option value="attack">攻撃型</option>
+            <option value="defense">守備型</option>
+          </select>
+        </label>
+        <label>
+          AI
+          <select id="difficulty">
+            <option value="beginner">初級</option>
+            <option value="intermediate" selected>中級</option>
+            <option value="advanced">上級</option>
+            <option value="oni">鬼</option>
+          </select>
+        </label>
+        <button id="newGame" type="button">新規対局</button>
+      </div>
+    </header>
+    <p id="status" role="status">駒を選択してください。</p>
+    <main id="app"></main>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
