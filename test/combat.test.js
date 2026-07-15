@@ -94,9 +94,13 @@ const officerState = {
   ],
 };
 assert.ok(
-  !generateMovesForPiece(officerState, officerState.pieces[0], piecesData).some((move) => move.to.x === 1 && move.to.y === 0),
-  'non-general cannot enter the enemy headquarters',
+  generateMovesForPiece(officerState, officerState.pieces[0], piecesData).some((move) => move.to.x === 1 && move.to.y === 0),
+  'non-capturing piece can enter the enemy headquarters',
 );
+const officerHqMove = generateMovesForPiece(officerState, officerState.pieces[0], piecesData)
+  .find((move) => move.to.x === 1 && move.to.y === 0);
+const officerAtHq = applyMove(officerState, officerHqMove, piecesData, combat);
+assert.notEqual(officerAtHq.winner, 'south', 'non-capturing piece does not win by entering headquarters');
 
 const generalState = structuredClone(officerState);
 generalState.pieces[0].type = 'rank_01';
@@ -133,6 +137,24 @@ assert.ok(
   'runner can move vertically',
 );
 assert.equal(generateMovesForPiece(movementState, movementState.pieces[1], piecesData).length, 0, 'trap cannot move');
+
+const cavalryBoard = { cols: 7, rows: 7, riverRow: 99, bridges: [] };
+const cavalryState = {
+  board: cavalryBoard,
+  turn: 'south',
+  pieces: [{ id: 'cavalry', owner: 'south', type: 'sp_deer', x: 3, y: 4, alive: true }],
+};
+const cavalryTargets = generateMovesForPiece(cavalryState, cavalryState.pieces[0], piecesData)
+  .map((move) => `${move.to.x},${move.to.y}`);
+for (const target of ['3,3', '3,2', '2,4', '4,4', '3,5']) {
+  assert.ok(cavalryTargets.includes(target), `cavalry can move to ${target}`);
+}
+const blockedCavalryState = structuredClone(cavalryState);
+blockedCavalryState.pieces.push({ id: 'blocker', owner: 'south', type: 'rank_09', x: 3, y: 3, alive: true });
+assert.ok(
+  !generateMovesForPiece(blockedCavalryState, blockedCavalryState.pieces[0], piecesData).some((move) => move.to.x === 3 && move.to.y === 2),
+  'cavalry cannot jump over the first forward cell to reach the second',
+);
 
 const trapState = {
   board,

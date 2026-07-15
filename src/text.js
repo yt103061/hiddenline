@@ -17,7 +17,7 @@ export const REASON_TEXT = {
 
 export const MOVE_TEXT = {
   step1: '前後左右に1マス',
-  cavalry: '前に2マス、または横・後ろに1マス',
+  cavalry: '前に1または2マス、横・後ろに1マス（飛び越え不可）',
   runner: '縦横にまっすぐ何マスでも（駒は飛び越えられない）',
   flyer: '縦に何マスでも＋横に1マス。川と途中の駒を飛び越えられる',
   none: '動けない',

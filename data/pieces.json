@@ -196,7 +196,7 @@
   "backAsset": "assets/piece-back-v2.png",
   "moveDefs": {
     "step1": "orthogonal 1 tile",
-    "cavalry": "forward 2 tiles OR back/side 1 tile, no jump",
+    "cavalry": "forward 1 or 2 tiles OR back/side 1 tile, no jump",
     "flyer": "vertical multi-tile straight (may jump pieces) + horizontal 1, may cross river without using crossing point",
     "runner": "vertical/horizontal multi-tile straight, no turn, no jump",
     "none": "cannot move"

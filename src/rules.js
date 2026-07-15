@@ -175,9 +175,6 @@ export function generateMovesForPiece(state, piece, data) {
     if (!canEnter(board, pathFrom, physicalTo, definition.move)) return false;
     if (slide && !isPathClear(state, pathFrom, physicalTo)) return false;
 
-    const destinationHq = hqOwnerAt(board, to);
-    if (destinationHq && destinationHq !== piece.owner && !definition.canCapture) return false;
-
     const occupant = occupantAt(state, to);
     if (occupant?.owner === piece.owner) return false;
 
@@ -195,8 +192,6 @@ export function generateMovesForPiece(state, piece, data) {
     if (moves.some((move) => move.to.x === x && move.to.y === y)) return;
     const occupant = occupantAt(state, to);
     if (occupant?.owner === piece.owner) return;
-    const destinationHq = hqOwnerAt(board, to);
-    if (destinationHq && destinationHq !== piece.owner && !definition.canCapture) return;
     const key = cellKey(to);
     if (moveKeys.has(key)) return;
     moveKeys.add(key);
@@ -209,9 +204,11 @@ export function generateMovesForPiece(state, piece, data) {
 
   if (definition.move === 'cavalry') {
     for (const source of sources) {
-      for (const [dx, dy] of [[0, 2 * forward], [0, -forward], [1, 0], [-1, 0]]) {
-        add(source.x + dx, source.y + dy, false, source);
-      }
+      add(source.x, source.y + forward, false, source);
+      add(source.x, source.y + 2 * forward, true, source);
+      add(source.x, source.y - forward, false, source);
+      add(source.x + 1, source.y, false, source);
+      add(source.x - 1, source.y, false, source);
     }
   }
 
@@ -236,9 +233,6 @@ export function generateMovesForPiece(state, piece, data) {
           if (isWater(board, physicalTo)) continue;
 
           const to = canonicalPosition(board, physicalTo);
-          const destinationHq = hqOwnerAt(board, to);
-          if (destinationHq && destinationHq !== piece.owner && !definition.canCapture) continue;
-
           const occupant = occupantAt(state, to);
           if (occupant?.owner === piece.owner) continue;
           const key = cellKey(to);
