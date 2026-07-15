@@ -1,15 +1,17 @@
 import boards from '../data/boards.json' with { type: 'json' };
 import piecesData from '../data/pieces.json' with { type: 'json' };
+import { bridgeEdges, waterRowY, hqOwnerAt } from './rules.js';
 
-export function createGame(mode = 'casual', preset = 'balanced') {
+export function buildFormation(mode = 'casual', preset = 'balanced', owner = 'south') {
   const board = boards[mode];
   const pieceList = piecesData.pieces.flatMap((piece) =>
     Array.from({ length: piece[`count_${mode}`] || 0 }, (_, index) => ({ type: piece.id, index })),
   );
+  return formation(pieceList, preset, owner, board);
+}
 
-  const south = formation(pieceList, preset, 'south', board);
-  const north = formation(pieceList, 'balanced', 'north', board);
-
+export function createGameFromFormations(mode = 'casual', south, north) {
+  const board = boards[mode];
   return {
     mode,
     board,
@@ -22,13 +24,20 @@ export function createGame(mode = 'casual', preset = 'balanced') {
   };
 }
 
+export function createGame(mode = 'casual', preset = 'balanced') {
+  const south = buildFormation(mode, preset, 'south');
+  const north = buildFormation(mode, 'balanced', 'north');
+  return createGameFromFormations(mode, south, north);
+}
+
 export function formation(pieceList, preset, owner, board) {
   const sorted = [...pieceList].sort((a, b) => scoreType(a.type, preset) - scoreType(b.type, preset));
   const rows = owner === 'south'
     ? [...board.deployRows].reverse()
     : board.deployRows.map((row) => board.rows - 1 - row).sort((a, b) => a - b);
-  const cells = deploymentCells(rows, owner, board, sorted.length);
-  keepStaticPiecesOffCrossings(sorted, cells, board);
+  const cells = deploymentCells(rows, owner, board, sorted.length)
+    .filter((cell) => hqOwnerAt(board, cell) !== owner);
+  keepStaticPiecesOffBridgeEnds(sorted, cells, board);
 
   return sorted.map((item, index) => ({
     id: `${owner}_${item.type}_${item.index}`,
@@ -37,7 +46,7 @@ export function formation(pieceList, preset, owner, board) {
     x: cells[index].x,
     y: cells[index].y,
     alive: true,
-    revealed: owner === 'south',
+    revealed: false,
     history: [],
   }));
 }
@@ -56,7 +65,6 @@ function deploymentCells(rows, owner, board, needed) {
 
 function scoreType(type, preset) {
   const base = {
-    base: 99,
     trap: 90,
     rank_01: 10,
     rank_02: 12,
@@ -89,16 +97,36 @@ export function revealForViewer(state, viewer) {
   };
 }
 
-function keepStaticPiecesOffCrossings(sorted, cells, board) {
+export function swapFormationPieces(formation, indexA, indexB) {
+  const newFormation = [...formation];
+  if (indexA >= 0 && indexB >= 0 && indexA < newFormation.length && indexB < newFormation.length) {
+    const a = newFormation[indexA];
+    const b = newFormation[indexB];
+    newFormation[indexA] = { ...a, x: b.x, y: b.y };
+    newFormation[indexB] = { ...b, x: a.x, y: a.y };
+  }
+  return newFormation;
+}
+
+function keepStaticPiecesOffBridgeEnds(sorted, cells, board) {
+  const waterY = waterRowY(board);
+  const blocked = new Set(
+    bridgeEdges(board)
+      .flat()
+      .filter((cell) => cell.y !== waterY)
+      .map((cell) => `${cell.x},${cell.y}`),
+  );
+  const isBlocked = (index) => blocked.has(`${cells[index].x},${cells[index].y}`);
+
   for (let index = 0; index < sorted.length; index += 1) {
-    if (!['trap', 'base'].includes(sorted[index].type)) continue;
-    if (!board.crossings.includes(cells[index].x)) continue;
+    if (sorted[index].type !== 'trap') continue;
+    if (!isBlocked(index)) continue;
 
     const swapIndex = cells.findIndex((cell, candidateIndex) =>
-      candidateIndex > index
+      candidateIndex !== index
       && candidateIndex < sorted.length
-      && !board.crossings.includes(cell.x)
-      && !['trap', 'base'].includes(sorted[candidateIndex].type),
+      && !isBlocked(candidateIndex)
+      && sorted[candidateIndex].type !== 'trap',
     );
     if (swapIndex !== -1) [sorted[index], sorted[swapIndex]] = [sorted[swapIndex], sorted[index]];
   }

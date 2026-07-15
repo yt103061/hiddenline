@@ -13,21 +13,68 @@ export function inBounds(board, pos) {
   return pos.x >= 0 && pos.y >= 0 && pos.x < board.cols && pos.y < board.rows;
 }
 
-export function riverBetween(board, from, to) {
-  if (from.x !== to.x) return false;
-  const top = Math.min(from.y, to.y);
-  const bottom = Math.max(from.y, to.y);
-  return top < board.riverRow && bottom >= board.riverRow;
+export function waterRowY(board) {
+  return board.riverRow - 1;
 }
 
-export function isCrossing(board, pos) {
-  return board.crossings.includes(pos.x);
+export function isIsland(board, pos) {
+  return pos.y === waterRowY(board) && (board.bridges ?? []).some((bridge) => bridge.island === pos.x);
+}
+
+export function isWater(board, pos) {
+  return pos.y === waterRowY(board) && !isIsland(board, pos);
+}
+
+export function bridgeEdges(board) {
+  const waterY = waterRowY(board);
+  const bridges = board.bridges ?? [];
+  const edges = [];
+
+  for (const bridge of bridges) {
+    const island = { x: bridge.island, y: waterY };
+    for (const bank of bridge.banks) {
+      edges.push([{ x: bank, y: waterY - 1 }, island]);
+      edges.push([{ x: bank, y: waterY + 1 }, island]);
+    }
+  }
+
+  for (const a of bridges) {
+    for (const b of bridges) {
+      if (b.island - a.island === 1) edges.push([{ x: a.island, y: waterY }, { x: b.island, y: waterY }]);
+    }
+  }
+
+  return edges;
+}
+
+export function bridgeNeighbors(board, pos) {
+  const neighbors = [];
+  for (const [a, b] of bridgeEdges(board)) {
+    if (a.x === pos.x && a.y === pos.y) neighbors.push(b);
+    else if (b.x === pos.x && b.y === pos.y) neighbors.push(a);
+  }
+  return neighbors;
+}
+
+export function hqOwnerAt(board, pos) {
+  if (!(board.hqCols ?? []).includes(pos.x)) return null;
+  if (pos.y === board.rows - 1) return 'south';
+  if (pos.y === 0) return 'north';
+  return null;
+}
+
+function spansWaterRow(board, from, to) {
+  if (from.x !== to.x) return false;
+  const waterY = waterRowY(board);
+  return Math.min(from.y, to.y) < waterY && Math.max(from.y, to.y) > waterY;
 }
 
 export function canEnter(board, from, to, moveType) {
   if (!inBounds(board, to)) return false;
   if (moveType === 'flyer') return true;
-  if (riverBetween(board, from, to)) return isCrossing(board, to) || isCrossing(board, from);
+  if (isWater(board, to)) return false;
+  if (isIsland(board, from) || isIsland(board, to)) return false;
+  if (spansWaterRow(board, from, to)) return false;
   return true;
 }
 
@@ -74,6 +121,15 @@ export function generateMovesForPiece(state, piece, data) {
     return !occupant;
   };
 
+  const addBridge = (x, y) => {
+    const to = { x, y };
+    if (!inBounds(board, to)) return;
+    if (moves.some((move) => move.to.x === x && move.to.y === y)) return;
+    const occupant = occupantAt(state, to);
+    if (occupant?.owner === piece.owner) return;
+    moves.push({ pieceId: piece.id, from: { x: piece.x, y: piece.y }, to, targetId: occupant?.id ?? null, via: 'bridge' });
+  };
+
   if (definition.move === 'step1') {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) add(piece.x + dx, piece.y + dy);
   }
@@ -85,10 +141,20 @@ export function generateMovesForPiece(state, piece, data) {
   if (definition.move === 'runner' || definition.move === 'flyer') {
     for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
       for (let distance = 1; ; distance += 1) {
+        const x = piece.x + dx * distance;
+        const y = piece.y + dy * distance;
         if (definition.move === 'flyer' && dx !== 0 && distance > 1) break;
-        if (!add(piece.x + dx * distance, piece.y + dy * distance, true)) break;
+        if (definition.move === 'flyer' && isWater(board, { x, y })) {
+          if (!inBounds(board, { x, y })) break;
+          continue;
+        }
+        if (!add(x, y, true)) break;
       }
     }
+  }
+
+  for (const neighbor of bridgeNeighbors(board, { x: piece.x, y: piece.y })) {
+    addBridge(neighbor.x, neighbor.y);
   }
 
   return moves;
@@ -99,10 +165,6 @@ export function generateLegalMoves(state, data, owner = state.turn) {
 }
 
 export function resolveCombat(combat, attackerType, defenderType) {
-  if (defenderType === 'base') {
-    return { result: 'BASE', attackerRemoved: false, defenderRemoved: false, trapSelfRemove: false };
-  }
-
   const result = combat.matrix[attackerType]?.[defenderType];
   if (!result) throw new Error(`Missing combat result ${attackerType} vs ${defenderType}`);
 
@@ -125,14 +187,9 @@ export function applyMove(state, move, data, combat) {
   if (!target) {
     piece.x = move.to.x;
     piece.y = move.to.y;
-  } else if (target.type === 'base' && pieceById(data, piece.type).canCapture) {
-    piece.x = move.to.x;
-    piece.y = move.to.y;
-    next.winner = piece.owner;
-    next.reason = 'base';
   } else {
     const combatResult = resolveCombat(combat, piece.type, target.type);
-    const event = { attacker: piece.type, defender: target.type, result: combatResult.result };
+    const event = { attacker: piece.type, defender: target.type, result: combatResult.result, attackerOwner: piece.owner };
 
     target.revealed = true;
     piece.revealed = true;
@@ -147,6 +204,12 @@ export function applyMove(state, move, data, combat) {
     }
 
     if (combatResult.defenderRemoved) target.alive = false;
+  }
+
+  const hqOwner = hqOwnerAt(next.board, { x: piece.x, y: piece.y });
+  if (!next.winner && piece.alive && hqOwner && hqOwner !== piece.owner) {
+    next.winner = piece.owner;
+    next.reason = 'hq';
   }
 
   next.moveCount = (next.moveCount || 0) + 1;
@@ -165,9 +228,8 @@ export function checkVictory(state, data) {
 
   for (const owner of PLAYERS) {
     const movablePieces = state.pieces.filter((piece) => piece.owner === owner && piece.alive && pieceById(data, piece.type)?.move !== 'none');
-    const capturers = state.pieces.filter((piece) => piece.owner === owner && piece.alive && pieceById(data, piece.type)?.canCapture);
 
-    if (!movablePieces.length || !capturers.length) {
+    if (!movablePieces.length) {
       state.winner = owner === 'south' ? 'north' : 'south';
       state.reason = 'surrender';
       return state;

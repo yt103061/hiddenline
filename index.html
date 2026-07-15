@@ -4,41 +4,220 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>アニマルライン / HIDDEN LINE</title>
+    <link rel="icon" href="assets/app_icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="src/styles.css" />
   </head>
-  <body>
-    <header class="site-header">
-      <img src="assets/logo.svg" alt="HIDDEN LINE logo" />
-      <div class="controls" aria-label="対局設定">
-        <label>
-          モード
-          <select id="mode">
-            <option value="casual">カジュアル 6x6</option>
-            <option value="classic">クラシック 8x6</option>
-          </select>
-        </label>
-        <label>
-          布陣
-          <select id="preset">
-            <option value="balanced">バランス型</option>
-            <option value="attack">攻撃型</option>
-            <option value="defense">守備型</option>
-          </select>
-        </label>
-        <label>
-          AI
-          <select id="difficulty">
-            <option value="beginner">初級</option>
-            <option value="intermediate" selected>中級</option>
-            <option value="advanced">上級</option>
-            <option value="oni">鬼</option>
-          </select>
-        </label>
-        <button id="newGame" type="button">新規対局</button>
+  <body data-screen="home">
+    <section id="screen-home" class="screen">
+      <div class="hero-animals" aria-hidden="true">
+        <span>🦁</span><span>🦊</span><span>🐰</span><span>🦅</span><span>🐍</span><span>🐭</span>
       </div>
-    </header>
-    <p id="status" role="status">駒を選択してください。</p>
-    <main id="app"></main>
+      <img class="home-logo" src="assets/logo.svg" alt="HIDDEN LINE" />
+      <p class="tagline">正体をかくした動物たちの、推理と駆け引きのボードゲーム</p>
+
+      <form id="setup">
+        <fieldset class="option-group">
+          <legend>対戦相手</legend>
+          <div class="option-cards">
+            <label class="option-card">
+              <input type="radio" name="opponent" value="ai" checked />
+              <span class="option-title">🤖 AIと対戦</span>
+              <span class="option-desc">ひとりで遊ぶ。AIの強さを選べます。</span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="opponent" value="human" />
+              <span class="option-title">👥 2人で対戦</span>
+              <span class="option-desc">ひとつの端末を交代で使って対戦します。</span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="opponent" value="online" />
+              <span class="option-title">🌐 オンライン対戦</span>
+              <span class="option-desc">部屋コードで離れた相手と対戦します。</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="option-group" id="group-online" hidden>
+          <legend>オンライン対戦</legend>
+          <div class="online-panel">
+            <button type="button" id="onlineHost" class="ghost">🏠 部屋を作る</button>
+            <div class="online-join">
+              <input type="text" id="onlineCodeInput" maxlength="4" placeholder="部屋コード" autocomplete="off" autocapitalize="characters" />
+              <button type="button" id="onlineJoin" class="ghost">🚪 部屋に入る</button>
+            </div>
+          </div>
+          <p class="hint">盤のルール（カジュアル／クラシック）は部屋を作った側（ホスト）の設定が適用されます。駒の並べ方はそれぞれの画面で自分で編集できます。</p>
+        </fieldset>
+
+        <fieldset class="option-group">
+          <legend>ルール</legend>
+          <div class="option-cards">
+            <label class="option-card">
+              <input type="radio" name="mode" value="casual" checked />
+              <span class="option-title">🌱 カジュアル</span>
+              <span class="option-desc">4×7の盤・駒10+巣。まずはここから。約5分。</span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="mode" value="classic" />
+              <span class="option-title">🌳 クラシック</span>
+              <span class="option-desc">8×9の盤・駒30+巣。全部の動物が登場。約15分。</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="option-group">
+          <legend>はじめの並べ方</legend>
+          <div class="option-cards">
+            <label class="option-card">
+              <input type="radio" name="preset" value="balanced" checked />
+              <span class="option-title">⚖️ バランス型</span>
+              <span class="option-desc">攻めと守りをほどよく配置。</span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="preset" value="attack" />
+              <span class="option-title">⚔️ 攻撃型</span>
+              <span class="option-desc">強い駒を前へ。先手先手で押し込む。</span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="preset" value="defense" />
+              <span class="option-title">🛡️ 守備型</span>
+              <span class="option-desc">強い駒を後ろへ。じっくり構える。</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="option-group" id="group-difficulty">
+          <legend>AIの強さ</legend>
+          <div class="option-cards">
+            <label class="option-card">
+              <input type="radio" name="difficulty" value="beginner" />
+              <span class="option-title">🐣 初級</span>
+              <span class="option-desc">はじめての人向け。</span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="difficulty" value="intermediate" checked />
+              <span class="option-title">🦊 中級</span>
+              <span class="option-desc">ほどよい歯ごたえ。</span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="difficulty" value="advanced" />
+              <span class="option-title">🐺 上級</span>
+              <span class="option-desc">先を読んで攻めてくる。</span>
+            </label>
+            <label class="option-card">
+              <input type="radio" name="difficulty" value="oni" />
+              <span class="option-title">👹 鬼</span>
+              <span class="option-desc">あなたの駒も推理してくる最強AI。</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="home-actions">
+          <button type="submit" id="startGame" class="primary">対局開始</button>
+          <button type="button" id="openHelpHome" class="ghost">遊び方</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="screen-lobby" class="screen">
+      <header class="game-bar">
+        <img src="assets/logo.svg" alt="HIDDEN LINE" class="bar-logo" />
+        <div class="bar-actions">
+          <button id="lobbyHome" class="ghost" type="button">ホームへ</button>
+        </div>
+      </header>
+      <div class="lobby-card">
+        <p id="lobbyStatus" role="status">接続中…</p>
+        <p id="lobbyCode" class="room-code" hidden></p>
+      </div>
+    </section>
+
+    <section id="screen-setup" class="screen">
+      <header class="game-bar">
+        <img src="assets/logo.svg" alt="HIDDEN LINE" class="bar-logo" />
+        <div class="bar-actions">
+          <button id="setupHome" class="ghost" type="button">ホームへ</button>
+        </div>
+      </header>
+      <p id="setupStatus" role="status">駒をタップして位置を変えます。</p>
+      <main id="setupApp">
+        <div class="stage">
+          <div class="board-wrap">
+            <div class="board" id="setupBoard"></div>
+            <svg id="setupBridges" class="bridge-layer" aria-hidden="true"></svg>
+          </div>
+        </div>
+        <aside id="setupSide">
+          <div class="setup-presets">
+            <button id="setupBalanced" class="preset-btn" type="button">⚖️ バランス</button>
+            <button id="setupAttack" class="preset-btn" type="button">⚔️ 攻撃</button>
+            <button id="setupDefense" class="preset-btn" type="button">🛡️ 守備</button>
+            <button id="setupShuffle" class="preset-btn" type="button">🔀 シャッフル</button>
+          </div>
+          <div class="setup-actions">
+            <button id="setupStart" class="primary" type="button">対局開始</button>
+          </div>
+        </aside>
+      </main>
+    </section>
+
+    <section id="screen-game" class="screen">
+      <header class="game-bar">
+        <img src="assets/logo.svg" alt="HIDDEN LINE" class="bar-logo" />
+        <div class="bar-actions">
+          <button id="openHelpGame" class="ghost" type="button">？ 遊び方</button>
+          <button id="resign" class="ghost" type="button">投了</button>
+          <button id="goHome" class="ghost" type="button">ホームへ</button>
+        </div>
+      </header>
+      <p id="status" role="status">駒を選択してください。</p>
+      <main id="app">
+        <div class="stage">
+          <div id="hudTop" class="hud-player"></div>
+          <div class="board-wrap">
+            <div class="board" id="board"></div>
+            <svg id="bridges" class="bridge-layer" aria-hidden="true"></svg>
+            <div class="fx-layer" id="fx" aria-hidden="true"></div>
+          </div>
+          <div id="hudBottom" class="hud-player"></div>
+        </div>
+        <aside id="side">
+          <section>
+            <h2>対局情報</h2>
+            <p id="moveCount"></p>
+          </section>
+          <section>
+            <h2>推理メモ</h2>
+            <p class="hint">戦闘した相手の駒は、以後は正体が見えます。駒を右クリック（長押し）で戦闘履歴を確認できます。</p>
+            <ol id="battleLog"></ol>
+          </section>
+        </aside>
+      </main>
+    </section>
+
+    <div id="handover" hidden>
+      <div class="handover-card">
+        <p id="handoverText">交代してください</p>
+        <button id="handoverOk" type="button" class="primary">準備OK</button>
+      </div>
+    </div>
+
+    <dialog id="result-dialog">
+      <h2 id="resultTitle"></h2>
+      <p id="resultReason"></p>
+      <div class="dialog-actions">
+        <button id="rematch" type="button" class="primary">もう一度</button>
+        <button id="resultHome" type="button" class="ghost">ホームへ</button>
+      </div>
+    </dialog>
+
+    <dialog id="help-dialog">
+      <div id="helpContent"></div>
+      <div class="dialog-actions">
+        <button id="closeHelp" type="button" class="primary">とじる</button>
+      </div>
+    </dialog>
+
     <script type="module" src="src/main.js"></script>
   </body>
 </html>
