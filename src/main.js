@@ -80,6 +80,9 @@ const el = {
   onlineStatus: document.querySelector('#onlineStatus'),
   homePrimaryActions: document.querySelector('#homePrimaryActions'),
   difficultySummary: document.querySelector('#difficultySummary'),
+  settingSummary: document.querySelector('#settingSummary'),
+  homeSelectionSummary: document.querySelector('#homeSelectionSummary'),
+  heroStart: document.querySelector('#heroStart'),
   setupSelection: document.querySelector('#setupSelection'),
   setupSelectionEmpty: document.querySelector('#setupSelectionEmpty'),
   setupSelectionToken: document.querySelector('#setupSelectionToken'),
@@ -456,6 +459,19 @@ document.querySelector('#setup').onsubmit = (event) => {
   newGame();
 };
 
+function updateHomeLauncher() {
+  const opponent = document.querySelector('input[name="opponent"]:checked')?.value || 'ai';
+  const mode = document.querySelector('input[name="mode"]:checked')?.value || 'casual';
+  const difficulty = document.querySelector('input[name="difficulty"]:checked')?.closest('.option-card')?.querySelector('.option-title')?.textContent || '中級';
+  const opponentLabel = { ai: 'AI', human: '2人対戦', online: 'オンライン' }[opponent];
+  const modeLabel = mode === 'classic' ? 'クラシック' : 'カジュアル';
+  el.settingSummary.textContent = `${modeLabel}${opponent === 'ai' ? ` · AI${difficulty}` : ''}`;
+  el.homeSelectionSummary.textContent = `${opponentLabel} · ${modeLabel}${opponent === 'ai' ? ` · ${difficulty}` : ''}`;
+  el.heroStart.textContent = opponent === 'ai' ? 'AIとすぐ遊ぶ' : opponent === 'human' ? '2人ですぐ遊ぶ' : 'オンライン対戦を選ぶ';
+  el.heroStart.type = opponent === 'online' ? 'button' : 'submit';
+  el.heroStart.onclick = opponent === 'online' ? () => document.querySelector('#group-online').scrollIntoView({ behavior: 'smooth', block: 'center' }) : null;
+}
+
 for (const radio of document.querySelectorAll('input[name="opponent"]')) {
   radio.onchange = () => {
     if (!radio.checked) return;
@@ -463,14 +479,22 @@ for (const radio of document.querySelectorAll('input[name="opponent"]')) {
     document.querySelector('#group-online').hidden = radio.value !== 'online';
     el.homePrimaryActions.hidden = radio.value === 'online';
     homeMessage('');
+    updateHomeLauncher();
   };
+}
+
+for (const radio of document.querySelectorAll('input[name="mode"]')) {
+  radio.addEventListener('change', updateHomeLauncher);
 }
 
 for (const radio of document.querySelectorAll('input[name="difficulty"]')) {
   radio.onchange = () => {
     if (radio.checked) el.difficultySummary.textContent = radio.closest('.option-card').querySelector('.option-title').textContent;
+    updateHomeLauncher();
   };
 }
+
+updateHomeLauncher();
 
 document.querySelector('#resign').onclick = async () => {
   if (!state || state.winner || ui.busy) return;

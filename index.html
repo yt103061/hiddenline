@@ -24,31 +24,44 @@
           <span class="home-kicker">かくして、よんで、勝負しよう！</span>
           <h1>正体を隠した動物たちの、推理と駆け引きのボードゲーム</h1>
           <p>ルールはかんたん。勝敗のヒントから、相手の動物を見破ろう。</p>
+          <div class="hero-actions">
+            <button type="submit" form="setup" id="heroStart" class="primary hero-start">AIとすぐ遊ぶ</button>
+            <span>登録不要 · 約5分</span>
+          </div>
         </div>
       </div>
 
       <form id="setup" class="home-form">
+        <div class="launcher-heading">
+          <div><span class="step-label">STEP 1</span><h2>対戦相手を選ぶ</h2></div>
+          <p>選んだら、すぐ配置へ進めます</p>
+        </div>
         <fieldset class="option-group">
-          <legend>誰と遊びますか</legend>
+          <legend class="sr-only">誰と遊びますか</legend>
           <div class="option-cards opponent-cards">
             <label class="option-card">
               <input type="radio" name="opponent" value="ai" checked />
+              <img class="opponent-icon" src="assets/piece-lion-v2.png" alt="" />
               <span class="option-title">AIと対戦</span>
               <span class="option-desc">ひとりで遊ぶ</span>
             </label>
             <label class="option-card">
               <input type="radio" name="opponent" value="human" />
+              <span class="opponent-pair" aria-hidden="true"><img src="assets/piece-rabbit-v2.png" alt="" /><img src="assets/piece-fox-v2.png" alt="" /></span>
               <span class="option-title">2人で対戦</span>
               <span class="option-desc">1台の端末を交代で使う</span>
             </label>
             <label class="option-card">
               <input type="radio" name="opponent" value="online" />
-              <span class="option-title">オンライン対戦</span>
-              <span class="option-desc">部屋コードで合流する</span>
+              <img class="opponent-icon" src="assets/piece-eagle-v2.png" alt="" />
+              <span class="option-title">オンライン</span>
+              <span class="option-desc">ランダム・友達と対戦</span>
             </label>
           </div>
         </fieldset>
 
+        <details class="launch-settings" id="gameSettings">
+          <summary><span><b>STEP 2</b> ゲーム設定</span><strong id="settingSummary">カジュアル · AI中級</strong></summary>
         <fieldset class="option-group">
           <legend>盤面を選びます</legend>
           <div class="option-cards mode-cards">
@@ -93,6 +106,7 @@
             </div>
           </fieldset>
         </details>
+        </details>
 
         <fieldset class="option-group online-group" id="group-online" hidden>
           <legend>オンライン対戦</legend>
@@ -114,7 +128,8 @@
         </fieldset>
 
         <div class="home-actions" id="homePrimaryActions">
-          <button type="submit" id="startGame" class="primary">配置へ</button>
+          <div class="selection-summary"><span>選択中</span><strong id="homeSelectionSummary">AI · カジュアル · 中級</strong></div>
+          <button type="submit" id="startGame" class="primary">この設定で配置へ</button>
         </div>
       </form>
     </section>
