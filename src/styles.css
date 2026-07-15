@@ -1440,3 +1440,238 @@ dialog h3 {
     transform: none;
   }
 }
+
+/* Friendly storybook theme shared by setup, game, lobby, and dialogs. */
+:root {
+  --ink: #29483e;
+  --muted: #60776d;
+  --bg: #fff7df;
+  --panel: #fffdf4;
+  --panel-strong: #fff0e8;
+  --line: #dec994;
+  --board-frame: #ed945c;
+  --accent: #e85f48;
+  --accent-hover: #cf4d38;
+  --north: #4381b9;
+  --gold: #f0b83d;
+  --gold-deep: #b77b12;
+  --danger: #c94459;
+  --move: #258369;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+html { background: var(--bg); }
+
+body {
+  background:
+    radial-gradient(circle at 5% 10%, rgb(116 203 179 / 20%) 0 90px, transparent 92px),
+    radial-gradient(circle at 94% 28%, rgb(245 190 66 / 18%) 0 120px, transparent 122px),
+    linear-gradient(180deg, #fff9e8, #fff4dc);
+}
+
+button.primary {
+  color: #fff;
+  box-shadow: 0 5px 0 #b94332, 0 10px 18px rgb(133 69 43 / 18%);
+}
+
+button.secondary,
+button.preset-btn {
+  color: var(--ink);
+  background: #eaf7ed;
+  border-color: #a9cfba;
+}
+
+button.secondary:hover,
+button.preset-btn:hover {
+  border-color: #55a487;
+  background: #dff2e6;
+}
+
+.brand-lockup img {
+  border-radius: 13px;
+  box-shadow: 0 3px 9px rgb(80 95 70 / 16%);
+}
+
+.brand-lockup strong,
+.home-intro h1,
+#side h2,
+#setupSide h2,
+dialog h2,
+dialog h3,
+.selection-detail span,
+.handover-card p,
+.cutin-vs,
+.cutin-result {
+  color: #397862;
+}
+
+.game-bar {
+  margin-bottom: 12px;
+  padding: 8px 14px;
+  border: 2px solid #ead8aa;
+  border-radius: 18px;
+  background: rgb(255 253 244 / 92%);
+  box-shadow: 0 8px 22px rgb(102 84 51 / 9%);
+}
+
+.screen-status,
+.form-status,
+.hint,
+.panel-label,
+.selection-detail p,
+.hud-none,
+.cutin-owner {
+  color: var(--muted);
+}
+
+#side,
+#setupSide,
+.lobby-card,
+.handover-card,
+dialog,
+.cutin,
+.hud-player {
+  border-color: #e4cd94;
+  background: rgb(255 253 244 / 96%);
+  box-shadow: 0 12px 30px rgb(108 81 36 / 11%);
+}
+
+.board-wrap {
+  border-color: #b85d3e;
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 22%), transparent 42%),
+    linear-gradient(#f6b66f, #e88351);
+  box-shadow: 0 8px 0 #bf603f, 0 18px 34px rgb(107 65 40 / 20%);
+}
+
+.board {
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 16%) 1px, transparent 1px),
+    linear-gradient(rgb(255 255 255 / 16%) 1px, transparent 1px),
+    linear-gradient(135deg, #f9e8b8, #efd599);
+}
+
+.cell {
+  box-shadow: inset 0 0 0 1px rgb(133 96 43 / 28%);
+}
+
+.cell:focus-visible {
+  outline-color: #1e6657;
+}
+
+.cell.water {
+  background:
+    repeating-linear-gradient(170deg, rgb(255 255 255 / 34%) 0 2px, transparent 2px 11px),
+    linear-gradient(#8fd2dc, #54aebe);
+  box-shadow: inset 0 2px 5px rgb(37 112 126 / 22%);
+}
+
+.cell.island {
+  background: radial-gradient(circle at 45% 40%, #d9edbb, #9dca8e 67%, #78a26d);
+}
+
+.cell.hq {
+  background:
+    radial-gradient(ellipse at center, transparent 0 22%, rgb(190 92 57 / 18%) 23% 30%, transparent 31% 38%, rgb(190 92 57 / 24%) 39% 47%, transparent 48%),
+    #f8cfae;
+  box-shadow: inset 0 0 0 3px #d97851;
+}
+
+.cell.hq::before { border-color: #b85d3e; }
+
+.token {
+  overflow: hidden;
+  background: #fffaf0;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 0 #ce794d, 0 7px 12px rgb(83 61 39 / 24%);
+}
+
+.token::after {
+  inset: 1%;
+  border-width: 4px;
+}
+
+.token.north { box-shadow: 0 4px 0 #326895, 0 7px 12px rgb(44 68 84 / 22%); }
+.token.back { background: #77c7b6; }
+
+.token-face {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: none;
+}
+
+.token-fallback { color: var(--ink); }
+
+.cell.sel {
+  box-shadow: inset 0 0 0 5px #286c5b;
+}
+
+.cell.sel .token {
+  filter: saturate(1.08) brightness(1.04);
+  box-shadow: 0 7px 0 #c86e47, 0 0 0 4px #fff, 0 0 0 9px #286c5b, 0 14px 20px rgb(73 83 62 / 25%);
+}
+
+.cell.move-dot::after {
+  width: 34%;
+  height: 34%;
+  border-width: 4px;
+  box-shadow: 0 3px 0 #155a48;
+}
+
+.cell.last-from { background-color: rgb(255 217 91 / 35%); }
+.cell.last-to:not(.sel):not(.attack-target) { box-shadow: inset 0 0 0 4px #a66b14; }
+
+.mini-token {
+  overflow: hidden;
+  background: #fffaf0;
+}
+
+.mini-token img { width: 100%; height: 100%; object-fit: cover; }
+
+.selection-empty {
+  border-color: #a9c9b6;
+  background: #f4fbf2;
+}
+
+.preset-btn[aria-pressed="true"] {
+  border-color: #d59422;
+  color: #6f4a08;
+  background: #fff0b8;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 70%);
+}
+
+#handover,
+.coin-toss,
+.cutin-backdrop,
+dialog::backdrop {
+  background: rgb(41 72 62 / 72%);
+  backdrop-filter: blur(6px);
+}
+
+.coin-toss-card {
+  border-color: #e6c56d;
+  color: var(--ink);
+  background: #fffaf0;
+  box-shadow: 0 24px 70px rgb(54 68 53 / 30%);
+}
+
+.coin-face {
+  color: #397862;
+  background: radial-gradient(circle at 35% 28%, #fffce0, #f1bd45 75%);
+}
+
+.coin-face img {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+}
+
+@media (max-width: 560px) {
+  .game-bar { padding: 6px 8px; border-radius: 14px; }
+  .board-wrap { border-radius: 14px; }
+  .token { border-width: 2px; }
+  .token::after { border-width: 3px; }
+}

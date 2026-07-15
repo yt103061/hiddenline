@@ -235,11 +235,11 @@ assert.notEqual(
 
 for (const definition of piecesData.pieces) {
   assert.ok(definition.asset, `${definition.id} declares an asset`);
-  const svg = await readFile(new URL(`../${definition.asset}`, import.meta.url), 'utf8');
-  assert.match(svg, /<svg\b/);
-  assert.doesNotMatch(svg, /<text\b|[\u{1F300}-\u{1FAFF}]/u, `${definition.asset} is path-based and contains no emoji text`);
+  assert.match(definition.asset, /\.png$/, `${definition.asset} uses the approved illustrated asset set`);
+  const image = await readFile(new URL(`../${definition.asset}`, import.meta.url));
+  assert.ok(image.length > 10_000, `${definition.asset} contains a production image`);
 }
-const backSvg = await readFile(new URL(`../${piecesData.backAsset}`, import.meta.url), 'utf8');
-assert.doesNotMatch(backSvg, /<text\b|[\u{1F300}-\u{1FAFF}]/u, 'piece back is path-based and contains no emoji text');
+const backImage = await readFile(new URL(`../${piecesData.backAsset}`, import.meta.url));
+assert.ok(backImage.length > 10_000, 'piece back contains the approved illustrated asset');
 
 console.log('rules, composite headquarters, fair AI, assets, and data integrity tests passed');
