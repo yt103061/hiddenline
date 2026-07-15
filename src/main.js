@@ -4,7 +4,7 @@ import { createGame } from './state.js';
 import { applyMove, generateMovesForPiece, pieceById } from './rules.js';
 import { chooseAiMove } from './ai.js';
 import { grantBattlePoints } from './battlepass.js';
-import { renderBoard, updateSelection, renderLog, renderInfo, renderBridges, renderHud, message } from './render.js';
+import { renderBoard, updateSelection, renderLog, renderInfo, renderOverlay, renderHud, message } from './render.js';
 import { animateMove, showBattleCutIn } from './fx.js';
 import { openGuide } from './guide.js';
 import {
@@ -54,7 +54,7 @@ function cancelPendingAi() {
 function redraw() {
   renderBoard(el.board, state, piecesData, ui, { onCell, onInspect });
   updateSelection(el.board, ui);
-  renderBridges(el.bridges, state.board, ui.viewer);
+  renderOverlay(el.bridges, state.board, ui.viewer);
   renderHud(el, state, piecesData, ui);
   renderLog(el.log, state, piecesData, ui.names);
   renderInfo(el.info, state);

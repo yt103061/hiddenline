@@ -18,7 +18,7 @@ export function waterRowY(board) {
 }
 
 export function isIsland(board, pos) {
-  return pos.y === waterRowY(board) && (board.bridgeIslands ?? []).includes(pos.x);
+  return pos.y === waterRowY(board) && (board.bridges ?? []).some((bridge) => bridge.island === pos.x);
 }
 
 export function isWater(board, pos) {
@@ -27,15 +27,40 @@ export function isWater(board, pos) {
 
 export function bridgeEdges(board) {
   const waterY = waterRowY(board);
-  return (board.bridgeIslands ?? []).map((x) => ({
-    island: { x, y: waterY },
-    banks: [
-      { x: x - 1, y: waterY - 1 },
-      { x: x + 1, y: waterY - 1 },
-      { x: x - 1, y: waterY + 1 },
-      { x: x + 1, y: waterY + 1 },
-    ],
-  }));
+  const bridges = board.bridges ?? [];
+  const edges = [];
+
+  for (const bridge of bridges) {
+    const island = { x: bridge.island, y: waterY };
+    for (const bank of bridge.banks) {
+      edges.push([{ x: bank, y: waterY - 1 }, island]);
+      edges.push([{ x: bank, y: waterY + 1 }, island]);
+    }
+  }
+
+  for (const a of bridges) {
+    for (const b of bridges) {
+      if (b.island - a.island === 1) edges.push([{ x: a.island, y: waterY }, { x: b.island, y: waterY }]);
+    }
+  }
+
+  return edges;
+}
+
+export function bridgeNeighbors(board, pos) {
+  const neighbors = [];
+  for (const [a, b] of bridgeEdges(board)) {
+    if (a.x === pos.x && a.y === pos.y) neighbors.push(b);
+    else if (b.x === pos.x && b.y === pos.y) neighbors.push(a);
+  }
+  return neighbors;
+}
+
+export function hqOwnerAt(board, pos) {
+  if (!(board.hqCols ?? []).includes(pos.x)) return null;
+  if (pos.y === board.rows - 1) return 'south';
+  if (pos.y === 0) return 'north';
+  return null;
 }
 
 function spansWaterRow(board, from, to) {
@@ -99,6 +124,7 @@ export function generateMovesForPiece(state, piece, data) {
   const addBridge = (x, y) => {
     const to = { x, y };
     if (!inBounds(board, to)) return;
+    if (moves.some((move) => move.to.x === x && move.to.y === y)) return;
     const occupant = occupantAt(state, to);
     if (occupant?.owner === piece.owner) return;
     moves.push({ pieceId: piece.id, from: { x: piece.x, y: piece.y }, to, targetId: occupant?.id ?? null, via: 'bridge' });
@@ -127,13 +153,8 @@ export function generateMovesForPiece(state, piece, data) {
     }
   }
 
-  for (const bridge of bridgeEdges(board)) {
-    if (piece.x === bridge.island.x && piece.y === bridge.island.y) {
-      for (const bank of bridge.banks) addBridge(bank.x, bank.y);
-    } else {
-      const fromBank = bridge.banks.some((bank) => bank.x === piece.x && bank.y === piece.y);
-      if (fromBank) addBridge(bridge.island.x, bridge.island.y);
-    }
+  for (const neighbor of bridgeNeighbors(board, { x: piece.x, y: piece.y })) {
+    addBridge(neighbor.x, neighbor.y);
   }
 
   return moves;
@@ -144,10 +165,6 @@ export function generateLegalMoves(state, data, owner = state.turn) {
 }
 
 export function resolveCombat(combat, attackerType, defenderType) {
-  if (defenderType === 'base') {
-    return { result: 'BASE', attackerRemoved: false, defenderRemoved: false, trapSelfRemove: false };
-  }
-
   const result = combat.matrix[attackerType]?.[defenderType];
   if (!result) throw new Error(`Missing combat result ${attackerType} vs ${defenderType}`);
 
@@ -170,11 +187,6 @@ export function applyMove(state, move, data, combat) {
   if (!target) {
     piece.x = move.to.x;
     piece.y = move.to.y;
-  } else if (target.type === 'base' && pieceById(data, piece.type).canCapture) {
-    piece.x = move.to.x;
-    piece.y = move.to.y;
-    next.winner = piece.owner;
-    next.reason = 'base';
   } else {
     const combatResult = resolveCombat(combat, piece.type, target.type);
     const event = { attacker: piece.type, defender: target.type, result: combatResult.result, attackerOwner: piece.owner };
@@ -194,6 +206,12 @@ export function applyMove(state, move, data, combat) {
     if (combatResult.defenderRemoved) target.alive = false;
   }
 
+  const hqOwner = hqOwnerAt(next.board, { x: piece.x, y: piece.y });
+  if (!next.winner && piece.alive && hqOwner && hqOwner !== piece.owner) {
+    next.winner = piece.owner;
+    next.reason = 'hq';
+  }
+
   next.moveCount = (next.moveCount || 0) + 1;
   next.turn = piece.owner === 'south' ? 'north' : 'south';
   return checkVictory(next, data);
@@ -210,9 +228,8 @@ export function checkVictory(state, data) {
 
   for (const owner of PLAYERS) {
     const movablePieces = state.pieces.filter((piece) => piece.owner === owner && piece.alive && pieceById(data, piece.type)?.move !== 'none');
-    const capturers = state.pieces.filter((piece) => piece.owner === owner && piece.alive && pieceById(data, piece.type)?.canCapture);
 
-    if (!movablePieces.length || !capturers.length) {
+    if (!movablePieces.length) {
       state.winner = owner === 'south' ? 'north' : 'south';
       state.reason = 'surrender';
       return state;

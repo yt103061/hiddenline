@@ -1,35 +1,39 @@
 {
   "casual": {
-    "cols": 6,
-    "rows": 6,
-    "riverRow": 3,
-    "bridgeIslands": [
-      1,
-      4
+    "cols": 4,
+    "rows": 7,
+    "riverRow": 4,
+    "bridges": [
+      { "island": 1, "banks": [0] },
+      { "island": 2, "banks": [3] }
     ],
     "deployRows": [
       4,
-      5
+      5,
+      6
     ],
-    "baseAllowedRows": [
-      5
+    "hqCols": [
+      1,
+      2
     ]
   },
   "classic": {
-    "cols": 6,
+    "cols": 8,
     "rows": 9,
     "riverRow": 5,
-    "bridgeIslands": [
-      1,
-      4
+    "bridges": [
+      { "island": 1, "banks": [0, 2] },
+      { "island": 6, "banks": [5, 7] }
     ],
     "deployRows": [
+      5,
       6,
       7,
       8
     ],
-    "baseAllowedRows": [
-      8
+    "hqCols": [
+      3,
+      4
     ]
   },
   "turnTimeSec": 15,

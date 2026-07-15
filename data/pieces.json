@@ -71,7 +71,7 @@
       "name": "キツネ",
       "en": "fox",
       "rankOrder": 7,
-      "count_classic": 2,
+      "count_classic": 4,
       "count_casual": 1,
       "canCapture": false,
       "move": "step1",
@@ -82,8 +82,8 @@
       "name": "タヌキ",
       "en": "raccoon",
       "rankOrder": 8,
-      "count_classic": 2,
-      "count_casual": 0,
+      "count_classic": 4,
+      "count_casual": 1,
       "canCapture": false,
       "move": "step1",
       "role": "officer"
@@ -93,7 +93,7 @@
       "name": "ウサギ",
       "en": "rabbit",
       "rankOrder": 9,
-      "count_classic": 2,
+      "count_classic": 4,
       "count_casual": 1,
       "canCapture": false,
       "move": "step1",
@@ -104,7 +104,7 @@
       "name": "シカ",
       "en": "deer",
       "rankOrder": 50,
-      "count_classic": 1,
+      "count_classic": 2,
       "count_casual": 0,
       "canCapture": false,
       "move": "cavalry",
@@ -115,7 +115,7 @@
       "name": "ヘビ",
       "en": "snake",
       "rankOrder": 51,
-      "count_classic": 1,
+      "count_classic": 2,
       "count_casual": 1,
       "canCapture": false,
       "move": "step1",
@@ -164,17 +164,6 @@
       "canCapture": false,
       "move": "none",
       "role": "trap"
-    },
-    {
-      "id": "base",
-      "name": "巣",
-      "en": "base",
-      "rankOrder": 99,
-      "count_classic": 1,
-      "count_casual": 1,
-      "canCapture": false,
-      "move": "none",
-      "role": "base"
     }
   ],
   "moveDefs": {
@@ -184,29 +173,16 @@
     "runner": "vertical/horizontal multi-tile straight, no turn, no jump",
     "none": "cannot move"
   },
-  "captureEligible_classic": [
-    "rank_01",
-    "rank_02",
-    "rank_03",
-    "rank_04",
-    "rank_05",
-    "rank_06"
-  ],
-  "captureEligible_casual": [
-    "rank_01",
-    "rank_04",
-    "rank_06"
-  ],
   "casualPieceSet": [
     "rank_01",
     "rank_04",
     "rank_06",
     "rank_07",
+    "rank_08",
     "rank_09",
     "sp_snake",
     "sp_mouse",
     "sp_eagle",
-    "trap",
-    "base"
+    "trap"
   ]
 }

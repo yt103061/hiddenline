@@ -1,6 +1,6 @@
 import boards from '../data/boards.json' with { type: 'json' };
 import piecesData from '../data/pieces.json' with { type: 'json' };
-import { bridgeEdges } from './rules.js';
+import { bridgeEdges, waterRowY, hqOwnerAt } from './rules.js';
 
 export function createGame(mode = 'casual', preset = 'balanced') {
   const board = boards[mode];
@@ -28,7 +28,8 @@ export function formation(pieceList, preset, owner, board) {
   const rows = owner === 'south'
     ? [...board.deployRows].reverse()
     : board.deployRows.map((row) => board.rows - 1 - row).sort((a, b) => a - b);
-  const cells = deploymentCells(rows, owner, board, sorted.length);
+  const cells = deploymentCells(rows, owner, board, sorted.length)
+    .filter((cell) => hqOwnerAt(board, cell) !== owner);
   keepStaticPiecesOffBridgeEnds(sorted, cells, board);
 
   return sorted.map((item, index) => ({
@@ -57,7 +58,6 @@ function deploymentCells(rows, owner, board, needed) {
 
 function scoreType(type, preset) {
   const base = {
-    base: 99,
     trap: 90,
     rank_01: 10,
     rank_02: 12,
@@ -91,20 +91,24 @@ export function revealForViewer(state, viewer) {
 }
 
 function keepStaticPiecesOffBridgeEnds(sorted, cells, board) {
+  const waterY = waterRowY(board);
   const blocked = new Set(
-    bridgeEdges(board).flatMap((bridge) => bridge.banks.map((bank) => `${bank.x},${bank.y}`)),
+    bridgeEdges(board)
+      .flat()
+      .filter((cell) => cell.y !== waterY)
+      .map((cell) => `${cell.x},${cell.y}`),
   );
   const isBlocked = (index) => blocked.has(`${cells[index].x},${cells[index].y}`);
 
   for (let index = 0; index < sorted.length; index += 1) {
-    if (!['trap', 'base'].includes(sorted[index].type)) continue;
+    if (sorted[index].type !== 'trap') continue;
     if (!isBlocked(index)) continue;
 
     const swapIndex = cells.findIndex((cell, candidateIndex) =>
       candidateIndex !== index
       && candidateIndex < sorted.length
       && !isBlocked(candidateIndex)
-      && !['trap', 'base'].includes(sorted[candidateIndex].type),
+      && sorted[candidateIndex].type !== 'trap',
     );
     if (swapIndex !== -1) [sorted[index], sorted[swapIndex]] = [sorted[swapIndex], sorted[index]];
   }

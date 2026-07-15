@@ -1,5 +1,5 @@
-import { pieceById, isWater, isIsland, bridgeEdges } from './rules.js';
-import { pieceEmoji, BACK_EMOJI, cellTitle, logLine, moveCountText } from './text.js';
+import { pieceById, isWater, isIsland, bridgeEdges, hqOwnerAt } from './rules.js';
+import { pieceEmoji, BACK_EMOJI, cellTitle, hqTitle, logLine, moveCountText } from './text.js';
 
 export function renderBoard(boardEl, state, data, ui, handlers = {}) {
   boardEl.innerHTML = '';
@@ -34,6 +34,12 @@ function createCell(state, data, x, y, ui, handlers) {
   cell.dataset.y = y;
   if (water) cell.tabIndex = -1;
 
+  const hqOwner = hqOwnerAt(state.board, pos);
+  if (hqOwner) {
+    cell.classList.add('hq', hqOwner);
+    cell.title = hqTitle(hqOwner, ui.names);
+  }
+
   if (ui.lastMove) {
     if (ui.lastMove.from.x === x && ui.lastMove.from.y === y) cell.classList.add('last-from');
     if (ui.lastMove.to.x === x && ui.lastMove.to.y === y) cell.classList.add('last-to');
@@ -49,9 +55,6 @@ function createCell(state, data, x, y, ui, handlers) {
 
     if (hidden) {
       cell.append(tokenEl(piece.owner, BACK_EMOJI, 'back'));
-    } else if (piece.type === 'base') {
-      cell.classList.add('base-cell');
-      cell.textContent = '🪹';
     } else {
       cell.append(tokenEl(piece.owner, pieceEmoji(def)));
     }
@@ -99,22 +102,39 @@ export function renderInfo(infoEl, state) {
   infoEl.textContent = moveCountText(state);
 }
 
-export function renderBridges(svgEl, board, viewer) {
+export function renderOverlay(svgEl, board, viewer) {
   const flip = viewer === 'north';
   const cx = (x) => (flip ? board.cols - (x + 0.5) : x + 0.5);
   const cy = (y) => (flip ? board.rows - (y + 0.5) : y + 0.5);
 
   svgEl.setAttribute('viewBox', `0 0 ${board.cols} ${board.rows}`);
   svgEl.setAttribute('preserveAspectRatio', 'none');
-  svgEl.innerHTML = bridgeEdges(board)
-    .flatMap(({ island, banks }) => banks.map((bank) => {
-      const x1 = cx(bank.x), y1 = cy(bank.y), x2 = cx(island.x), y2 = cy(island.y);
+
+  const bridges = bridgeEdges(board)
+    .map(([a, b]) => {
+      const x1 = cx(a.x), y1 = cy(a.y), x2 = cx(b.x), y2 = cy(b.y);
       return `
         <line class="bridge-rope" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" />
         <line class="bridge-deck" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" />
         <line class="bridge-slats" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" />`;
-    }))
+    })
     .join('');
+
+  const hqCols = board.hqCols ?? [];
+  const hqAreas = hqCols.length
+    ? ['south', 'north'].map((owner) => {
+      const y = owner === 'south' ? board.rows - 1 : 0;
+      const centers = hqCols.map((hqX) => cx(hqX));
+      const centerX = (Math.min(...centers) + Math.max(...centers)) / 2;
+      const left = centerX - hqCols.length / 2 + 0.08;
+      const top = cy(y) - 0.42;
+      return `
+        <rect class="hq-area ${owner}" x="${left}" y="${top}" width="${hqCols.length - 0.16}" height="0.84" rx="0.18" />
+        <text class="hq-icon" x="${centerX}" y="${cy(y) + 0.2}" text-anchor="middle">🪺</text>`;
+    }).join('')
+    : '';
+
+  svgEl.innerHTML = bridges + hqAreas;
 }
 
 export function renderHud(el, state, data, ui) {

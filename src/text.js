@@ -16,7 +16,6 @@ export const PIECE_EMOJI = {
   sp_rhino: '🦏',
   sp_mouse: '🐭',
   trap: '🐝',
-  base: '🪹',
 };
 
 export const BACK_EMOJI = '🍂';
@@ -28,8 +27,8 @@ export const RESULT_TEXT = {
 };
 
 export const REASON_TEXT = {
-  base: '相手の巣を占領しました',
-  surrender: '相手に動ける駒・捕獲できる駒がいなくなりました',
+  hq: '相手の巣に突入しました',
+  surrender: '相手に動ける駒がいなくなりました',
   tiebreak: '規定手数に到達し、残り戦力で判定しました',
   resign: '投了により決着しました',
 };
@@ -47,7 +46,6 @@ export const ROLE_TEXT = {
   officer: '士官',
   special: '特殊',
   trap: 'ワナ',
-  base: '巣',
 };
 
 export function playerNames(opponent) {
@@ -102,6 +100,10 @@ export function logLine(event, data, names) {
   const attacker = `${names[event.attackerOwner]}の${pieceName(data, event.attacker)}`;
   const defender = `${names[defenderOwner]}の${pieceName(data, event.defender)}`;
   return `${attacker} ⚔ ${defender} → ${RESULT_TEXT[event.result] ?? event.result}`;
+}
+
+export function hqTitle(owner, names) {
+  return `${names[owner]}の巣（本陣）`;
 }
 
 export function cellTitle(piece, def, viewer, names) {
