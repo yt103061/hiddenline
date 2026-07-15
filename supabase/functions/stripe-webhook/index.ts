@@ -1,14 +1,17 @@
 import Stripe from 'npm:stripe@17.7.0';
 import { admin, handleError, json, preflight, ResponseError } from '../_shared/server.ts';
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '');
 Deno.serve(async (request) => {
   const early = preflight(request); if (early) return early;
   let eventId = '';
   try {
     const signature = request.headers.get('stripe-signature'); if (!signature) throw new ResponseError(400, '署名がありません。');
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
+    if (!stripeKey || !webhookSecret) throw new ResponseError(503, '決済機能は現在準備中です。');
+    const stripe = new Stripe(stripeKey);
     const body = await request.text();
-    const event = await stripe.webhooks.constructEventAsync(body, signature, Deno.env.get('STRIPE_WEBHOOK_SECRET') || '');
+    const event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
     eventId = event.id;
     const { error: eventError } = await admin.from('webhook_events').insert({ event_id: event.id, event_type: event.type });
     if (eventError?.code === '23505') return json({ received: true, duplicate: true });

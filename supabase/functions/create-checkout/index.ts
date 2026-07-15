@@ -1,7 +1,6 @@
 import Stripe from 'npm:stripe@17.7.0';
 import { admin, handleError, json, preflight, requireUser, ResponseError } from '../_shared/server.ts';
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '');
 const products: Record<string, { amount: number; name: string }> = {
   basic: { amount: 600, name: 'Hidden Line Basic Pass' },
   premium: { amount: 1200, name: 'Hidden Line Premium Pass' },
@@ -10,7 +9,11 @@ const products: Record<string, { amount: number; name: string }> = {
 Deno.serve(async (request) => {
   const early = preflight(request); if (early) return early;
   try {
-    const user = await requireUser(request); const { tier } = await request.json(); const product = products[tier];
+    const user = await requireUser(request);
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeKey) throw new ResponseError(503, '決済機能は現在準備中です。');
+    const stripe = new Stripe(stripeKey);
+    const { tier } = await request.json(); const product = products[tier];
     if (!product) throw new ResponseError(400, '商品が正しくありません。');
     const origin = Deno.env.get('APP_ORIGIN') || 'https://hiddenline.vercel.app';
     const session = await stripe.checkout.sessions.create({ mode: 'payment', customer_email: user.email,
