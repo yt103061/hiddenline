@@ -1,6 +1,6 @@
 import boards from '../data/boards.json' with { type: 'json' };
 import piecesData from '../data/pieces.json' with { type: 'json' };
-import { bridgeEdges, waterRowY, canonicalPosition, isHqContinuation } from './rules.js';
+import { bridgeEdges, waterRowY, canonicalPosition, isHqContinuation, hqOwnerAt } from './rules.js';
 
 export function buildFormation(mode = 'casual', preset = 'balanced', owner = 'south') {
   const board = boards[mode];
@@ -40,7 +40,7 @@ export function formation(pieceList, preset, owner, board) {
     ? [...board.deployRows].reverse()
     : board.deployRows.map((row) => board.rows - 1 - row).sort((a, b) => a - b);
   const cells = deploymentCells(rows, owner, board, sorted.length);
-  keepStaticPiecesOffBridgeEnds(sorted, cells, board);
+  keepTrapsOffRestrictedCells(sorted, cells, board);
 
   return sorted.map((item, index) => ({
     id: `${owner}_${item.type}_${item.index}`,
@@ -113,18 +113,38 @@ export function revealForViewer(state, viewer) {
   };
 }
 
-export function swapFormationPieces(formation, indexA, indexB) {
+export function swapFormationPieces(formation, indexA, indexB, board) {
   const newFormation = [...formation];
   if (indexA >= 0 && indexB >= 0 && indexA < newFormation.length && indexB < newFormation.length) {
     const a = newFormation[indexA];
     const b = newFormation[indexB];
+    if (!canPlaceInFormation(a, b, board) || !canPlaceInFormation(b, a, board)) return formation;
     newFormation[indexA] = { ...a, x: b.x, y: b.y };
     newFormation[indexB] = { ...b, x: a.x, y: a.y };
   }
   return newFormation;
 }
 
-function keepStaticPiecesOffBridgeEnds(sorted, cells, board) {
+export function shuffleFormationPieces(formation, board, random = Math.random) {
+  const positions = formation.map(({ x, y }) => ({ x, y }));
+  const pieces = [...formation];
+  for (let index = pieces.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [pieces[index], pieces[swapIndex]] = [pieces[swapIndex], pieces[index]];
+  }
+  const shuffled = pieces.map((piece, index) => ({ ...piece, ...positions[index] }));
+  for (const trappedIndex of shuffled.map((piece, index) => ({ piece, index })).filter(({ piece }) => !canPlaceInFormation(piece, piece, board)).map(({ index }) => index)) {
+    const safeIndex = shuffled.findIndex((piece, index) => index !== trappedIndex && piece.type !== 'trap' && canPlaceInFormation(shuffled[trappedIndex], piece, board));
+    if (safeIndex !== -1) {
+      const trapPosition = { x: shuffled[trappedIndex].x, y: shuffled[trappedIndex].y };
+      shuffled[trappedIndex] = { ...shuffled[trappedIndex], x: shuffled[safeIndex].x, y: shuffled[safeIndex].y };
+      shuffled[safeIndex] = { ...shuffled[safeIndex], ...trapPosition };
+    }
+  }
+  return shuffled;
+}
+
+function keepTrapsOffRestrictedCells(sorted, cells, board) {
   const waterY = waterRowY(board);
   const blocked = new Set(
     bridgeEdges(board)
@@ -132,6 +152,9 @@ function keepStaticPiecesOffBridgeEnds(sorted, cells, board) {
       .filter((cell) => cell.y !== waterY)
       .map((cell) => `${cell.x},${cell.y}`),
   );
+  for (const cell of cells) {
+    if (hqOwnerAt(board, cell)) blocked.add(`${cell.x},${cell.y}`);
+  }
   const isBlocked = (index) => blocked.has(`${cells[index].x},${cells[index].y}`);
 
   for (let index = 0; index < sorted.length; index += 1) {
@@ -146,4 +169,13 @@ function keepStaticPiecesOffBridgeEnds(sorted, cells, board) {
     );
     if (swapIndex !== -1) [sorted[index], sorted[swapIndex]] = [sorted[swapIndex], sorted[index]];
   }
+}
+
+function canPlaceInFormation(piece, position, board) {
+  if (piece.type !== 'trap') return true;
+  if (hqOwnerAt(board, position)) return false;
+  const waterY = waterRowY(board);
+  return !bridgeEdges(board)
+    .flat()
+    .some((cell) => cell.y !== waterY && cell.x === position.x && cell.y === position.y);
 }

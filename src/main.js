@@ -1,7 +1,7 @@
 import piecesData from '../data/pieces.json' with { type: 'json' };
 import combat from '../data/combat_matrix.json' with { type: 'json' };
 import boards from '../data/boards.json' with { type: 'json' };
-import { createGame, buildFormation, createGameFromFormations, swapFormationPieces, chooseFirstTurn } from './state.js';
+import { createGame, buildFormation, createGameFromFormations, swapFormationPieces, shuffleFormationPieces, chooseFirstTurn } from './state.js';
 import { applyMove, generateMovesForPiece, pieceById } from './rules.js';
 import { chooseAiMove } from './ai.js';
 import { grantBattlePoints } from './battlepass.js';
@@ -595,7 +595,14 @@ function onSetupCell(x, y, piece) {
   const indexB = formation.findIndex(p => p.id === piece.id);
 
   if (indexA >= 0 && indexB >= 0) {
-    setup.formations[setup.editingOwner] = swapFormationPieces(formation, indexA, indexB);
+    const swapped = swapFormationPieces(formation, indexA, indexB, boards[settings.mode]);
+    if (swapped === formation) {
+      setup.selected = null;
+      renderSetupBoard();
+      el.setupStatus.textContent = 'ハチの巣（罠）は本陣や突入口には置けません。';
+      return;
+    }
+    setup.formations[setup.editingOwner] = swapped;
     setup.selected = null;
     setup.activePreset = null;
     setup.dirty = true;
@@ -615,12 +622,7 @@ function applyPreset(preset) {
 
 function shuffleFormation() {
   const formation = setup.formations[setup.editingOwner];
-  const shuffled = [...formation];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  setup.formations[setup.editingOwner] = shuffled;
+  setup.formations[setup.editingOwner] = shuffleFormationPieces(formation, boards[settings.mode]);
   setup.selected = null;
   setup.activePreset = 'shuffle';
   setup.dirty = true;

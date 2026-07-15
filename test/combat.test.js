@@ -4,7 +4,7 @@ import battlepass from '../data/battlepass.json' with { type: 'json' };
 import piecesData from '../data/pieces.json' with { type: 'json' };
 import combat from '../data/combat_matrix.json' with { type: 'json' };
 import boards from '../data/boards.json' with { type: 'json' };
-import { buildFormation, chooseFirstTurn, createGame, createGameFromFormations } from '../src/state.js';
+import { buildFormation, chooseFirstTurn, createGame, createGameFromFormations, shuffleFormationPieces, swapFormationPieces } from '../src/state.js';
 import {
   applyMove, bridgeEdges, canonicalPosition, checkVictory, generateMovesForPiece, hqCell,
   isHqContinuation, logicalNeighbors, resolveCombat,
@@ -187,9 +187,25 @@ for (const mode of ['casual', 'classic']) {
   for (const preset of ['balanced', 'attack', 'defense']) {
     const game = createGame(mode, preset);
     for (const piece of game.pieces) {
-      if (piece.type === 'trap') assert.ok(!bridgeCells.has(`${piece.x},${piece.y}`), `${mode}/${preset}: trap stays off bridge positions`);
+      if (piece.type === 'trap') {
+        assert.ok(!bridgeCells.has(`${piece.x},${piece.y}`), `${mode}/${preset}: trap stays off bridge positions`);
+        const ownHq = hqCell(boards[mode], piece.owner);
+        assert.notDeepEqual({ x: piece.x, y: piece.y }, { x: ownHq.x, y: ownHq.y }, `${mode}/${preset}: trap stays out of headquarters`);
+      }
       assert.notEqual(piece.y, waterY, `${mode}/${preset}: no piece starts on the water row`);
     }
+  }
+
+  const editable = buildFormation(mode, 'balanced', 'south');
+  const ownHq = hqCell(boards[mode], 'south');
+  const trapIndex = editable.findIndex((piece) => piece.type === 'trap');
+  const hqIndex = editable.findIndex((piece) => piece.x === ownHq.x && piece.y === ownHq.y);
+  assert.equal(swapFormationPieces(editable, trapIndex, hqIndex, boards[mode]), editable, `${mode}: manual swap rejects a trap in headquarters`);
+  let seed = 17;
+  const random = () => ((seed = (seed * 48271) % 2147483647) / 2147483647);
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const shuffled = shuffleFormationPieces(editable, boards[mode], random);
+    assert.ok(shuffled.filter((piece) => piece.type === 'trap').every((piece) => piece.x !== ownHq.x || piece.y !== ownHq.y), `${mode}: shuffle keeps traps out of headquarters`);
   }
 
   const attack = buildFormation(mode, 'attack', 'south').filter((piece) => piece.type.startsWith('rank_0') && Number(piece.type.slice(-2)) <= 6);
