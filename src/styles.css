@@ -382,6 +382,158 @@ body[data-screen="lobby"] #screen-lobby {
   min-width: 180px;
 }
 
+body[data-screen="home"] {
+  color: #27443a;
+  background: #fff7df;
+}
+
+body[data-screen="home"] #screen-home {
+  width: min(100%, 1160px);
+}
+
+body[data-screen="home"] .home-header {
+  padding: 4px 6px 10px;
+}
+
+body[data-screen="home"] .home-brand img {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  box-shadow: 0 5px 14px rgb(80 92 58 / 16%);
+}
+
+body[data-screen="home"] .home-brand strong {
+  color: #ef6a4d;
+}
+
+body[data-screen="home"] .home-brand span,
+body[data-screen="home"] .option-desc,
+body[data-screen="home"] .hint,
+body[data-screen="home"] .form-field label {
+  color: #5d756a;
+}
+
+body[data-screen="home"] button.text-button {
+  color: #216658;
+}
+
+body[data-screen="home"] .home-intro {
+  min-height: 410px;
+  align-items: center;
+  margin: 6px 0 28px;
+  padding: 48px 46px;
+  overflow: hidden;
+  border: 3px solid #fff;
+  border-radius: 34px;
+  background: #fdf1cf url("../assets/home-hero-v2.webp") center / cover no-repeat;
+  box-shadow: 0 18px 50px rgb(83 111 87 / 16%);
+}
+
+.home-intro-copy {
+  display: grid;
+  gap: 16px;
+  width: min(46%, 480px);
+}
+
+.home-kicker {
+  width: fit-content;
+  padding: 7px 12px;
+  border-radius: 999px;
+  color: #9a4a34;
+  background: #ffd76a;
+  font-size: 0.82rem;
+  font-weight: 850;
+  letter-spacing: 0.03em;
+}
+
+body[data-screen="home"] .home-intro h1 {
+  color: #234f43;
+  font-size: clamp(2rem, 4.5vw, 3.35rem);
+  line-height: 1.2;
+  text-wrap: balance;
+  text-shadow: 0 2px #fff8e7;
+}
+
+.home-intro-copy p {
+  max-width: 38ch;
+  margin: 0;
+  color: #48675c;
+  font-weight: 700;
+  line-height: 1.75;
+}
+
+body[data-screen="home"] .home-form {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 26px;
+  border: 2px solid #f2dfb2;
+  border-radius: 26px;
+  background: rgb(255 253 245 / 94%);
+  box-shadow: 0 12px 34px rgb(83 111 87 / 11%);
+}
+
+body[data-screen="home"] .option-group legend {
+  color: #315a4d;
+  font-size: 1rem;
+}
+
+body[data-screen="home"] .option-card {
+  border-color: #f0dfb9;
+  color: #29483e;
+  background: #fffaf0;
+  box-shadow: 0 4px 12px rgb(87 104 74 / 7%);
+}
+
+body[data-screen="home"] .option-card:hover {
+  border-color: #7bcab5;
+  background: #f4fff9;
+}
+
+body[data-screen="home"] .option-card:has(input:checked) {
+  border-color: #ef765b;
+  background: #fff0e8;
+  box-shadow: inset 0 0 0 1px rgb(239 118 91 / 20%), 0 5px 14px rgb(87 104 74 / 9%);
+}
+
+body[data-screen="home"] .advanced-settings {
+  border-color: #e7d7ad;
+  color: #315a4d;
+  background: #fff9e9;
+}
+
+body[data-screen="home"] .advanced-settings summary span,
+body[data-screen="home"] .form-status {
+  color: #bf573f;
+}
+
+body[data-screen="home"] .online-group {
+  border-color: #7bcab5;
+  color: #315a4d;
+  background: #f3fff9;
+}
+
+body[data-screen="home"] .inline-input input {
+  border-color: #8ccbbb;
+  color: #29483e;
+  background: #fff;
+}
+
+body[data-screen="home"] button.primary {
+  color: #fff;
+  background: #ef6a4d;
+  box-shadow: 0 7px 16px rgb(190 79 55 / 24%);
+}
+
+body[data-screen="home"] button.primary:hover {
+  background: #d9573d;
+}
+
+body[data-screen="home"] button.secondary {
+  color: #245448;
+  border-color: #88c8b7;
+  background: #e9fbf4;
+}
+
 .bar-actions {
   display: flex;
   align-items: center;
@@ -1123,6 +1275,16 @@ dialog h3 {
 }
 
 @media (max-width: 820px) {
+  body[data-screen="home"] .home-intro {
+    min-height: 360px;
+    padding: 34px 30px;
+    background-position: 56% center;
+  }
+
+  .home-intro-copy {
+    width: 52%;
+  }
+
   #app,
   #setupApp {
     grid-template-columns: minmax(0, 560px);
@@ -1151,6 +1313,49 @@ dialog h3 {
 
   body {
     padding: 8px;
+  }
+
+  body[data-screen="home"] .home-header {
+    padding-inline: 4px;
+  }
+
+  body[data-screen="home"] .home-brand img {
+    width: 48px;
+    height: 48px;
+    border-radius: 15px;
+  }
+
+  body[data-screen="home"] .home-intro {
+    min-height: 510px;
+    align-items: start;
+    margin-bottom: 18px;
+    padding: 24px 20px;
+    border-radius: 24px;
+    background-position: 63% bottom;
+    background-size: auto 72%;
+    background-repeat: no-repeat;
+    background-color: #fff1cf;
+  }
+
+  .home-intro-copy {
+    gap: 11px;
+    width: 100%;
+  }
+
+  body[data-screen="home"] .home-intro h1 {
+    max-width: 16ch;
+    font-size: clamp(1.75rem, 8.4vw, 2.35rem);
+  }
+
+  .home-intro-copy p {
+    max-width: 28ch;
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  body[data-screen="home"] .home-form {
+    padding: 18px 14px;
+    border-radius: 20px;
   }
 
   .home-header,
