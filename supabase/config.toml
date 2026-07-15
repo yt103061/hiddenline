@@ -1,5 +1,24 @@
 project_id = "lxpqnmqfpwrnckoyxiab"
 
+[auth]
+enabled = true
+site_url = "https://hiddenline.vercel.app"
+additional_redirect_urls = [
+  "https://hiddenline.vercel.app/**",
+  "https://*-yt103061s-projects.vercel.app/**",
+  "http://localhost:8000/**",
+  "http://127.0.0.1:8000/**",
+]
+
+[auth.email]
+enable_confirmations = true
+max_frequency = "1m"
+otp_length = 8
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 [functions.join-ranked-queue]
 verify_jwt = false
 [functions.claim-cpu-fallback]
