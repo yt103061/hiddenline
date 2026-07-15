@@ -23,7 +23,7 @@ export function evaluateMove(state, move, data, combat, config) {
   let score = (state.board.rows - 1 - move.to.y) * 2;
 
   if (target) {
-    if (target.revealed || config.omniscient) {
+    if (config.omniscient) {
       score += combatScore(combat.matrix[piece.type]?.[target.type]);
     } else if (config.inference) {
       score += expectedHiddenCombatScore(state, piece.type, target.owner, data, combat);
@@ -53,11 +53,7 @@ function expectedHiddenCombatScore(state, attackerType, targetOwner, data, comba
   const candidates = [];
   for (const definition of data.pieces) {
     const initialCount = definition[`count_${state.mode}`] || 0;
-    const knownCount = state.pieces.filter((piece) => (
-      piece.owner === targetOwner && piece.revealed && piece.type === definition.id
-    )).length;
-    const unknownCount = Math.max(0, initialCount - knownCount);
-    for (let index = 0; index < unknownCount; index += 1) candidates.push(definition.id);
+    for (let index = 0; index < initialCount; index += 1) candidates.push(definition.id);
   }
   if (!candidates.length) return 2;
   return candidates.reduce((sum, type) => sum + combatScore(combat.matrix[attackerType]?.[type]), 0) / candidates.length;

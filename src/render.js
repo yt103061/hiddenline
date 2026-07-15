@@ -62,7 +62,7 @@ function createCell(state, data, x, y, ui, handlers) {
 
   if (piece) {
     const def = pieceById(data, piece.type);
-    const hidden = piece.owner !== ui.viewer && !piece.revealed;
+    const hidden = piece.owner !== ui.viewer;
 
     cell.classList.add(piece.owner);
     cell.dataset.pid = piece.id;
@@ -190,11 +190,11 @@ export function updateSelection(boardEl, ui) {
   }
 }
 
-export function renderLog(logEl, state, data, names) {
+export function renderLog(logEl, state, data, names, viewer) {
   logEl.innerHTML = (state.log || [])
     .slice(-6)
     .reverse()
-    .map((event) => `<li>${logLine(event, data, names)}</li>`)
+    .map((event) => `<li>${logLine(event, data, names, viewer)}</li>`)
     .join('');
 }
 

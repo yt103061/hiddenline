@@ -270,10 +270,8 @@ export function applyMove(state, move, data, combat) {
     const combatResult = resolveCombat(combat, piece.type, target.type);
     const event = { attacker: piece.type, defender: target.type, result: combatResult.result, attackerOwner: piece.owner };
 
-    target.revealed = true;
-    piece.revealed = true;
-    piece.history = [...(piece.history || []), `vs ${target.type}: ${combatResult.result}`];
-    target.history = [...(target.history || []), `vs ${piece.type}: ${invertResult(combatResult.result)}`];
+    piece.history = [...(piece.history || []), `combat: ${combatResult.result}`];
+    target.history = [...(target.history || []), `combat: ${invertResult(combatResult.result)}`];
     next.log.push(event);
 
     if (combatResult.attackerRemoved) piece.alive = false;

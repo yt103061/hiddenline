@@ -44,7 +44,7 @@ export function animateMove(boardEl, fxEl, move) {
   });
 }
 
-export function showBattleCutIn(event, data, names) {
+export function showBattleCutIn(event, data, names, viewer) {
   const backdrop = document.createElement('div');
   backdrop.className = `cutin-backdrop ${reducedMotion() ? 'no-motion' : ''}`;
 
@@ -52,17 +52,17 @@ export function showBattleCutIn(event, data, names) {
   backdrop.innerHTML = `
     <div class="cutin">
       <div class="cutin-side">
-        ${cutInBadge(data, event.attacker, event.attackerOwner)}
+        ${cutInBadge(data, event.attacker, event.attackerOwner, event.attackerOwner !== viewer)}
         <span class="cutin-owner">${names[event.attackerOwner]}</span>
-        <span class="cutin-name">${pieceName(data, event.attacker)}</span>
+        <span class="cutin-name">${event.attackerOwner === viewer ? pieceName(data, event.attacker) : '正体不明'}</span>
       </div>
       <div class="cutin-vs">VS</div>
       <div class="cutin-side">
-        ${cutInBadge(data, event.defender, defenderOwner)}
+        ${cutInBadge(data, event.defender, defenderOwner, defenderOwner !== viewer)}
         <span class="cutin-owner">${names[defenderOwner]}</span>
-        <span class="cutin-name">${pieceName(data, event.defender)}</span>
+        <span class="cutin-name">${defenderOwner === viewer ? pieceName(data, event.defender) : '正体不明'}</span>
       </div>
-      <div class="cutin-result ${event.result.toLowerCase()}">${cutInResult(event, data)}</div>
+      <div class="cutin-result ${event.result.toLowerCase()}">${cutInResult(event, names)}</div>
     </div>`;
 
   document.body.append(backdrop);
@@ -78,13 +78,14 @@ export function showBattleCutIn(event, data, names) {
   });
 }
 
-function cutInResult(event, data) {
-  if (event.result === 'WIN') return `${pieceName(data, event.attacker)}の勝ち！`;
-  if (event.result === 'LOSE') return `${pieceName(data, event.defender)}の勝ち！`;
+function cutInResult(event, names) {
+  if (event.result === 'WIN') return `${names[event.attackerOwner]}の勝ち！`;
+  if (event.result === 'LOSE') return `${names[opponentOf(event.attackerOwner)]}の勝ち！`;
   return '相打ち！';
 }
 
-function cutInBadge(data, typeId, owner) {
+function cutInBadge(data, typeId, owner, hidden) {
   const def = pieceById(data, typeId);
-  return `<div class="token cutin-token ${owner}"><img class="token-face" src="${def.asset}" alt="" /></div>`;
+  const asset = hidden ? data.backAsset : def.asset;
+  return `<div class="token cutin-token ${owner}${hidden ? ' back' : ''}"><img class="token-face" src="${asset}" alt="" /></div>`;
 }

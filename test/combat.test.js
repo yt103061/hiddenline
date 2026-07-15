@@ -11,6 +11,7 @@ import {
 } from '../src/rules.js';
 import { DIFFICULTIES, evaluateMove } from '../src/ai.js';
 import { PROTOCOL_VERSION } from '../src/online.js';
+import { battleMessage, logLine } from '../src/text.js';
 
 const attackers = Object.keys(combat.matrix);
 const defenders = piecesData.pieces.map((piece) => piece.id);
@@ -128,6 +129,13 @@ const trapState = {
 const afterTrap = applyMove(trapState, { pieceId: 'lion', from: { x: 0, y: 1 }, to: { x: 0, y: 0 }, targetId: 'trap' }, piecesData, combat);
 assert.equal(afterTrap.pieces.find((piece) => piece.id === 'lion').alive, false, 'attacker dies to trap');
 assert.equal(afterTrap.pieces.find((piece) => piece.id === 'trap').alive, false, 'trap self-removes after successful defense');
+assert.equal(afterTrap.pieces.some((piece) => piece.revealed), false, 'combat never reveals either piece');
+assert.ok(afterTrap.pieces.every((piece) => !(piece.history || []).join(' ').includes('trap')), 'piece history stores results without enemy types');
+const trapEvent = afterTrap.log.at(-1);
+const southBattleText = battleMessage(trapEvent, piecesData, { south: 'あなた', north: '相手' }, 'south');
+assert.match(southBattleText, /相手の伏せ駒/, 'battle message hides the enemy type');
+assert.doesNotMatch(southBattleText, /ハチの巣/, 'battle message does not disclose an enemy trap');
+assert.match(logLine(trapEvent, piecesData, { south: 'あなた', north: '相手' }, 'south'), /相手の伏せ駒/, 'battle log hides the enemy type');
 
 const casualBridgeState = {
   board: boards.casual,

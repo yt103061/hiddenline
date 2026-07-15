@@ -49,7 +49,6 @@ export function formation(pieceList, preset, owner, board) {
     x: cells[index].x,
     y: cells[index].y,
     alive: true,
-    revealed: false,
     history: [],
   }));
 }
@@ -109,7 +108,7 @@ export function revealForViewer(state, viewer) {
     ...state,
     pieces: state.pieces.map((piece) => ({
       ...piece,
-      hidden: piece.owner !== viewer && !piece.revealed && piece.alive,
+      hidden: piece.owner !== viewer && piece.alive,
     })),
   };
 }

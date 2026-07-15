@@ -228,7 +228,7 @@ function redraw() {
   updateSelection(el.board, ui);
   renderOverlay(el.bridges, state.board, ui.viewer);
   renderHud(el, state, piecesData, ui);
-  renderLog(el.log, state, piecesData, ui.names);
+  renderLog(el.log, state, piecesData, ui.names, ui.viewer);
   renderInfo(el.info, state);
 }
 
@@ -288,7 +288,7 @@ async function performMove(move) {
   ui.lastMove = { from: move.from, to: move.to };
 
   const battle = (state.log?.length || 0) > previousLogLength ? state.log.at(-1) : null;
-  if (battle) await showBattleCutIn(battle, piecesData, ui.names);
+  if (battle) await showBattleCutIn(battle, piecesData, ui.names, ui.viewer);
 
   redraw();
   persistSession('game');
@@ -316,7 +316,7 @@ async function playMove(move) {
       aiTurn();
     }, 600);
   } else if (online.active) {
-    gameMessage(battle ? battleMessage(battle, piecesData, ui.names) : turnMessage(state, ui.names, 'online'));
+    gameMessage(battle ? battleMessage(battle, piecesData, ui.names, ui.viewer) : turnMessage(state, ui.names, 'online'));
   } else {
     showHandover(battle);
   }
@@ -329,7 +329,7 @@ async function applyOnlineMove(move) {
     finishGame();
     return;
   }
-  gameMessage(battle ? battleMessage(battle, piecesData, ui.names) : turnMessage(state, ui.names, 'online'));
+  gameMessage(battle ? battleMessage(battle, piecesData, ui.names, ui.viewer) : turnMessage(state, ui.names, 'online'));
 }
 
 async function aiTurn() {
@@ -346,12 +346,12 @@ async function aiTurn() {
     return;
   }
   gameMessage(battle
-    ? `${battleMessage(battle, piecesData, ui.names)}。あなたの番です。`
+    ? `${battleMessage(battle, piecesData, ui.names, ui.viewer)}。あなたの番です。`
     : turnMessage(state, ui.names, settings.opponent));
 }
 
 function showHandover(battle) {
-  gameMessage(battle ? battleMessage(battle, piecesData, ui.names) : 'お疲れさまでした');
+  gameMessage(battle ? battleMessage(battle, piecesData, ui.names, ui.viewer) : 'お疲れさまでした');
   el.handoverText.textContent = `${ui.names[state.turn]}の番です。端末を渡してください。`;
   el.handover.hidden = false;
   el.handoverOk.focus();

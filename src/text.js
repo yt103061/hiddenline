@@ -57,25 +57,23 @@ export function moveCountText(state) {
   return `${state.moveCount}手目（最大${state.maxMoves}手）`;
 }
 
-export function battleMessage(event, data, names) {
-  const attacker = `${names[event.attackerOwner]}の${pieceName(data, event.attacker)}`;
+function battlePieceLabel(type, owner, viewer, data, names) {
+  return `${names[owner]}の${owner === viewer ? pieceName(data, type) : '伏せ駒'}`;
+}
+
+export function battleMessage(event, data, names, viewer) {
+  const attacker = battlePieceLabel(event.attacker, event.attackerOwner, viewer, data, names);
   const defenderOwner = opponentOf(event.attackerOwner);
-
-  if (event.defender === 'trap') {
-    if (event.result === 'WIN') return `${attacker}がハチの巣を取り除きました`;
-    return `${attacker}はハチの巣に返り討ちにされました（ハチの巣も壊れました）`;
-  }
-
-  const defender = `${names[defenderOwner]}の${pieceName(data, event.defender)}`;
-  if (event.result === 'WIN') return `${attacker}が${defender}を倒しました`;
-  if (event.result === 'LOSE') return `${attacker}は${defender}に返り討ちにされました`;
+  const defender = battlePieceLabel(event.defender, defenderOwner, viewer, data, names);
+  if (event.result === 'WIN') return `${attacker}が${defender}との戦闘に勝ちました`;
+  if (event.result === 'LOSE') return `${attacker}は${defender}との戦闘に負けました`;
   return `${attacker}と${defender}は相打ちになりました`;
 }
 
-export function logLine(event, data, names) {
+export function logLine(event, data, names, viewer) {
   const defenderOwner = opponentOf(event.attackerOwner);
-  const attacker = `${names[event.attackerOwner]}の${pieceName(data, event.attacker)}`;
-  const defender = `${names[defenderOwner]}の${pieceName(data, event.defender)}`;
+  const attacker = battlePieceLabel(event.attacker, event.attackerOwner, viewer, data, names);
+  const defender = battlePieceLabel(event.defender, defenderOwner, viewer, data, names);
   return `${attacker} 対 ${defender}: ${RESULT_TEXT[event.result] ?? event.result}`;
 }
 
@@ -85,21 +83,23 @@ export function hqTitle(owner, names) {
 
 export function cellTitle(piece, def, viewer, names) {
   if (!piece) return '';
-  const hidden = piece.owner !== viewer && !piece.revealed;
+  const hidden = piece.owner !== viewer;
   if (hidden) return `${names[piece.owner]}の駒（正体不明）`;
   return `${names[piece.owner]}の${def.name}`;
 }
 
 function parseHistoryEntry(entry, data) {
+  const resultOnly = /^combat: (WIN|LOSE|DRAW)$/.exec(entry);
+  if (resultOnly) return RESULT_TEXT[resultOnly[1]] ?? resultOnly[1];
   const match = /^vs (\S+): (WIN|LOSE|DRAW)$/.exec(entry);
   if (!match) return entry;
-  return `対${pieceName(data, match[1])} ${RESULT_TEXT[match[2]]}`;
+  return RESULT_TEXT[match[2]] ?? match[2];
 }
 
 export function inspectMessage(piece, data, viewer, names) {
   if (!piece) return '空きマスです。';
-  const hidden = piece.owner !== viewer && !piece.revealed;
-  if (hidden) return `${names[piece.owner]}の伏せ駒です。戦闘すると正体が分かります。`;
+  const hidden = piece.owner !== viewer;
+  if (hidden) return `${names[piece.owner]}の伏せ駒です。戦闘結果から正体を推理してください。`;
 
   const def = pieceById(data, piece.type);
   const history = (piece.history || []).map((entry) => parseHistoryEntry(entry, data));
