@@ -102,11 +102,23 @@
       "en": "rabbit",
       "asset": "assets/piece-rabbit-v2.png",
       "rankOrder": 9,
-      "count_classic": 5,
+      "count_classic": 4,
       "count_casual": 0,
       "canCapture": false,
       "move": "step1",
       "role": "officer"
+    },
+    {
+      "id": "flag",
+      "name": "軍旗",
+      "en": "flag",
+      "asset": "assets/piece-flag-v2.png",
+      "rankOrder": 49,
+      "count_classic": 1,
+      "count_casual": 0,
+      "canCapture": false,
+      "move": "none",
+      "role": "flag"
     },
     {
       "id": "sp_deer",

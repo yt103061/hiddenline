@@ -1,4 +1,4 @@
-import { generateLegalMoves, occupantAt, hqOwnerAt, hqCell } from './rules.js';
+import { generateLegalMoves, occupantAt, hqOwnerAt, hqCell, flagStrengthType } from './rules.js';
 
 export const DIFFICULTIES = {
   beginner: { depth: 1, inference: false, omniscient: false, noise: 8 },
@@ -24,7 +24,7 @@ export function evaluateMove(state, move, data, combat, config) {
 
   if (target) {
     if (config.omniscient) {
-      score += combatScore(combat.matrix[piece.type]?.[target.type]);
+      score += combatScore(combat.matrix[piece.type]?.[flagStrengthType(state, target)]);
     } else if (config.inference) {
       score += expectedHiddenCombatScore(state, piece.type, target.owner, data, combat);
     } else {
@@ -46,6 +46,7 @@ export function evaluateMove(state, move, data, combat, config) {
 }
 
 function combatScore(result) {
+  if (!result) return 2;
   return result === 'WIN' ? 50 : result === 'DRAW' ? 8 : -25;
 }
 

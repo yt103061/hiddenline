@@ -14,7 +14,7 @@ import { PROTOCOL_VERSION } from '../src/online.js';
 import { battleMessage, logLine } from '../src/text.js';
 
 const attackers = Object.keys(combat.matrix);
-const defenders = piecesData.pieces.map((piece) => piece.id);
+const defenders = piecesData.pieces.map((piece) => piece.id).filter((id) => id !== 'flag');
 
 for (const attacker of attackers) {
   assert.notEqual(attacker, 'trap', 'trap must not be an attacker row');
@@ -68,7 +68,8 @@ assert.ok(
   piecesData.pieces.filter((piece) => piece.count_casual > 0 && piece.canCapture).length === 6,
   'casual includes all six headquarters occupiers',
 );
-assert.equal(piecesData.pieces.find((piece) => piece.id === 'rank_09').count_classic, 5, 'classic adds one rabbit');
+assert.equal(piecesData.pieces.find((piece) => piece.id === 'rank_09').count_classic, 4, 'classic uses four rabbits');
+assert.equal(piecesData.pieces.find((piece) => piece.id === 'flag').count_classic, 1, 'classic includes one flag');
 
 assert.deepEqual(
   new Set(logicalNeighbors(boards.casual, { x: 1, y: 6 }).map((pos) => `${pos.x},${pos.y}`)),
@@ -155,6 +156,29 @@ const southBattleText = battleMessage(trapEvent, piecesData, { south: 'あなた
 assert.match(southBattleText, /相手の伏せ駒/, 'battle message hides the enemy type');
 assert.doesNotMatch(southBattleText, /ハチの巣/, 'battle message does not disclose an enemy trap');
 assert.match(logLine(trapEvent, piecesData, { south: 'あなた', north: '相手' }, 'south'), /相手の伏せ駒/, 'battle log hides the enemy type');
+
+const supportedFlagState = {
+  board,
+  turn: 'south',
+  moveCount: 0,
+  maxMoves: 120,
+  strength: {},
+  pieces: [
+    { id: 'rabbit', owner: 'south', type: 'rank_09', x: 0, y: 2, alive: true, history: [] },
+    { id: 'south_lion', owner: 'south', type: 'rank_01', x: 4, y: 6, alive: true, history: [] },
+    { id: 'flag', owner: 'north', type: 'flag', x: 0, y: 1, alive: true, history: [] },
+    { id: 'flag_support', owner: 'north', type: 'rank_01', x: 0, y: 0, alive: true, history: [] },
+  ],
+};
+const afterSupportedFlag = applyMove(supportedFlagState, { pieceId: 'rabbit', from: { x: 0, y: 2 }, to: { x: 0, y: 1 }, targetId: 'flag' }, piecesData, combat);
+assert.equal(afterSupportedFlag.pieces.find((piece) => piece.id === 'rabbit').alive, false, 'flag borrows the strength of the friendly piece behind it');
+assert.equal(afterSupportedFlag.pieces.find((piece) => piece.id === 'flag').alive, true, 'supported flag survives when its borrowed rank wins');
+
+const unsupportedFlagState = structuredClone(supportedFlagState);
+unsupportedFlagState.pieces = unsupportedFlagState.pieces.filter((piece) => piece.id !== 'flag_support');
+const afterUnsupportedFlag = applyMove(unsupportedFlagState, { pieceId: 'rabbit', from: { x: 0, y: 2 }, to: { x: 0, y: 1 }, targetId: 'flag' }, piecesData, combat);
+assert.equal(afterUnsupportedFlag.pieces.find((piece) => piece.id === 'rabbit').alive, true, 'any movable piece defeats an unsupported flag');
+assert.equal(afterUnsupportedFlag.pieces.find((piece) => piece.id === 'flag').alive, false, 'unsupported flag is removed');
 
 const casualBridgeState = {
   board: boards.casual,

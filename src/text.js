@@ -28,6 +28,7 @@ export const ROLE_TEXT = {
   officer: '尉官',
   special: '特殊',
   trap: 'ワナ',
+  flag: '軍旗',
 };
 
 export function roleText(definition) {

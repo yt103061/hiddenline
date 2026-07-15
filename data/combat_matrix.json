@@ -2,7 +2,8 @@
   "note": "attacker perspective. WIN=attacker survives, LOSE=attacker removed, DRAW=both removed.",
   "specialRules": {
     "trap": "defense only. loses to sp_eagle & sp_mouse. wins vs all others and remains on the board.",
-    "base": "not combat. if stepped by capture-eligible piece -> game over (occupied)."
+    "base": "not combat. if stepped by capture-eligible piece -> game over (occupied).",
+    "flag": "defense only. copies the combat strength of the friendly piece one cell behind it toward its own headquarters; unsupported flag loses."
   },
   "matrix": {
     "rank_01": {

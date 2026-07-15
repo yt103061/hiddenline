@@ -275,6 +275,14 @@ export function resolveCombat(combat, attackerType, defenderType) {
   };
 }
 
+export function flagStrengthType(state, flag) {
+  if (flag?.type !== 'flag') return flag?.type ?? null;
+  const behindY = flag.y + (flag.owner === 'south' ? 1 : -1);
+  const support = occupantAt(state, { x: flag.x, y: behindY });
+  if (!support || support.owner !== flag.owner || support.type === 'flag') return null;
+  return support.type;
+}
+
 export function applyMove(state, move, data, combat) {
   const next = structuredClone(state);
   const piece = next.pieces.find((candidate) => candidate.id === move.pieceId);
@@ -288,7 +296,10 @@ export function applyMove(state, move, data, combat) {
     piece.x = destination.x;
     piece.y = destination.y;
   } else {
-    const combatResult = resolveCombat(combat, piece.type, target.type);
+    const effectiveDefender = flagStrengthType(next, target);
+    const combatResult = effectiveDefender
+      ? resolveCombat(combat, piece.type, effectiveDefender)
+      : { result: 'WIN', attackerRemoved: false, defenderRemoved: true, trapSelfRemove: false };
     const event = { attacker: piece.type, defender: target.type, result: combatResult.result, attackerOwner: piece.owner };
 
     piece.history = [...(piece.history || []), `combat: ${combatResult.result}`];
