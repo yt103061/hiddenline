@@ -978,6 +978,54 @@ body[data-screen="home"] button.secondary {
   gap: 8px;
 }
 
+.custom-presets {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.custom-presets label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.custom-presets input,
+.custom-presets select {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 2px solid #a9cfba;
+  border-radius: 10px;
+  color: var(--ink);
+  background: #fffdf4;
+}
+
+.custom-presets select { flex: 1; }
+.custom-presets .hint { min-height: 1.3em; margin: 0; }
+
+.random-match-button { width: 100%; }
+.random-match-hint { margin: 8px 0 0; text-align: center; }
+
+.online-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.online-divider::before,
+.online-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--line);
+}
+
 .preset-btn {
   padding-inline: 10px;
 }

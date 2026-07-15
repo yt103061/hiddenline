@@ -8,7 +8,7 @@ import { grantBattlePoints } from './battlepass.js';
 import { renderBoard, updateSelection, renderLog, renderInfo, renderOverlay, renderHud, tokenEl } from './render.js';
 import { animateMove, showBattleCutIn } from './fx.js';
 import { openGuide } from './guide.js';
-import { OnlineRoom, generateRoomCode } from './online.js';
+import { OnlineRoom, RandomMatchmaker, generateRoomCode } from './online.js';
 import {
   playerNames, turnMessage, selectMessage, battleMessage,
   inspectMessage, resultTitle, resultReason, opponentOf,
@@ -18,6 +18,7 @@ import {
 const settings = { opponent: 'ai', mode: 'casual', preset: 'balanced', difficulty: 'intermediate' };
 const SESSION_KEY = 'hiddenline-session';
 const SESSION_VERSION = 2;
+const CUSTOM_PRESETS_KEY = 'hiddenline-custom-presets-v1';
 let state = null;
 const ui = {
   viewer: 'south',
@@ -53,6 +54,7 @@ const online = {
   opponentFormation: null,
   startSent: false,
   pendingFirstTurn: null,
+  matcher: null,
 };
 
 const el = {
@@ -88,6 +90,9 @@ const el = {
   coinToss: document.querySelector('#coinToss'),
   coin: document.querySelector('#coin'),
   coinTossStatus: document.querySelector('#coinTossStatus'),
+  customPresetName: document.querySelector('#customPresetName'),
+  customPresetSelect: document.querySelector('#customPresetSelect'),
+  customPresetStatus: document.querySelector('#customPresetStatus'),
 };
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -193,6 +198,56 @@ function restoreSession() {
 function homeMessage(text, isError = false) {
   el.onlineStatus.textContent = text;
   el.onlineStatus.classList.toggle('error', isError);
+}
+
+function readCustomPresets() {
+  try {
+    const value = JSON.parse(localStorage.getItem(CUSTOM_PRESETS_KEY) || '{}');
+    return value && typeof value === 'object' ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeCustomPresets(presets) {
+  localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(presets));
+}
+
+function normalizedFormation(formation, owner, board) {
+  return formation.map((piece) => ({
+    key: piece.id.slice(owner.length + 1),
+    x: piece.x,
+    y: owner === 'north' ? board.rows - 1 - piece.y : piece.y,
+  }));
+}
+
+function formationFromPreset(preset, owner, mode) {
+  const board = boards[mode];
+  const positions = new Map(preset.positions.map((position) => [position.key, position]));
+  return buildFormation(mode, 'balanced', owner).map((piece) => {
+    const position = positions.get(piece.id.slice(owner.length + 1));
+    if (!position) return piece;
+    return { ...piece, x: position.x, y: owner === 'north' ? board.rows - 1 - position.y : position.y };
+  });
+}
+
+function updateCustomPresetOptions(selected = '') {
+  const presets = readCustomPresets()[settings.mode] || [];
+  el.customPresetSelect.replaceChildren(new Option('選択してください', ''));
+  for (const preset of presets) el.customPresetSelect.append(new Option(preset.name, preset.name));
+  el.customPresetSelect.value = selected;
+}
+
+function applyCustomPreset(name) {
+  const preset = (readCustomPresets()[settings.mode] || []).find((candidate) => candidate.name === name);
+  if (!preset) return false;
+  setup.formations[setup.editingOwner] = formationFromPreset(preset, setup.editingOwner, settings.mode);
+  setup.selected = null;
+  setup.activePreset = `custom:${name}`;
+  setup.dirty = true;
+  renderSetupBoard();
+  persistSession('setup');
+  return true;
 }
 
 function askConfirm(message, title = '確認') {
@@ -455,6 +510,8 @@ document.querySelector('#resultHome').onclick = () => {
 };
 
 function leaveOnlineRoom() {
+  online.matcher?.leave();
+  online.matcher = null;
   if (online.room) {
     if (state && !state.winner) online.room.send('resign');
     online.room.leave();
@@ -487,6 +544,8 @@ function startSetupScreen() {
   setup.selected = null;
   setup.activePreset = settings.preset;
   setup.dirty = false;
+  updateCustomPresetOptions();
+  el.customPresetStatus.textContent = '';
   renderSetupBoard();
   show('setup');
   persistSession('setup');
@@ -642,7 +701,59 @@ document.querySelector('#setupBalanced').onclick = () => applyPreset('balanced')
 document.querySelector('#setupAttack').onclick = () => applyPreset('attack');
 document.querySelector('#setupDefense').onclick = () => applyPreset('defense');
 document.querySelector('#setupShuffle').onclick = () => shuffleFormation();
+document.querySelector('#customPresetSave').onclick = () => {
+  const name = el.customPresetName.value.trim();
+  if (!name) {
+    el.customPresetStatus.textContent = 'プリセット名を入力してください。';
+    el.customPresetName.focus();
+    return;
+  }
+  const all = readCustomPresets();
+  const presets = all[settings.mode] || [];
+  const saved = {
+    name,
+    positions: normalizedFormation(setup.formations[setup.editingOwner], setup.editingOwner, boards[settings.mode]),
+  };
+  const existing = presets.findIndex((preset) => preset.name === name);
+  if (existing >= 0) presets[existing] = saved;
+  else presets.push(saved);
+  all[settings.mode] = presets.slice(-8);
+  writeCustomPresets(all);
+  setup.activePreset = `custom:${name}`;
+  el.customPresetName.value = '';
+  updateCustomPresetOptions(name);
+  updatePresetButtons();
+  el.customPresetStatus.textContent = existing >= 0 ? `「${name}」を上書きしました。` : `「${name}」を保存しました。`;
+};
+document.querySelector('#customPresetLoad').onclick = () => {
+  const name = el.customPresetSelect.value;
+  if (!name || !applyCustomPreset(name)) {
+    el.customPresetStatus.textContent = '適用するプリセットを選んでください。';
+    return;
+  }
+  el.customPresetStatus.textContent = `「${name}」を適用しました。`;
+};
+document.querySelector('#customPresetDelete').onclick = () => {
+  const name = el.customPresetSelect.value;
+  if (!name) {
+    el.customPresetStatus.textContent = '削除するプリセットを選んでください。';
+    return;
+  }
+  const all = readCustomPresets();
+  all[settings.mode] = (all[settings.mode] || []).filter((preset) => preset.name !== name);
+  writeCustomPresets(all);
+  updateCustomPresetOptions();
+  if (setup.activePreset === `custom:${name}`) setup.activePreset = null;
+  updatePresetButtons();
+  el.customPresetStatus.textContent = `「${name}」を削除しました。`;
+};
 document.querySelector('#setupReset').onclick = () => {
+  const customName = setup.activePreset?.startsWith('custom:') ? setup.activePreset.slice(7) : null;
+  if (customName && applyCustomPreset(customName)) {
+    setup.dirty = false;
+    el.customPresetStatus.textContent = `「${customName}」の保存状態に戻しました。`;
+    return;
+  }
   setup.formations[setup.editingOwner] = buildFormation(settings.mode, setup.activePreset || 'balanced', setup.editingOwner);
   setup.selected = null;
   setup.dirty = false;
@@ -707,6 +818,8 @@ function startOnlineSetup() {
   online.myFormation = null;
   online.startSent = false;
   online.pendingFirstTurn = null;
+  updateCustomPresetOptions();
+  el.customPresetStatus.textContent = '';
   renderSetupBoard();
   show('setup');
 }
@@ -804,6 +917,42 @@ function wireOnlineHandlers() {
 
 document.querySelector('#onlineCodeInput').oninput = (event) => {
   event.target.value = event.target.value.toUpperCase();
+};
+
+async function enterMatchedRoom({ code, role }) {
+  online.matcher?.leave();
+  online.matcher = null;
+  online.myRole = role === 'host' ? 'south' : 'north';
+  online.isHost = role === 'host';
+  online.code = code;
+  online.room = new OnlineRoom();
+  wireOnlineHandlers();
+  el.lobbyStatus.textContent = '対戦相手が見つかりました。対局へ接続しています…';
+  try {
+    if (role === 'host') await online.room.host(code);
+    else await online.room.guest(code);
+    el.lobbyStatus.textContent = role === 'host' ? '相手の接続を待っています…' : 'ホストの準備を待っています…';
+  } catch {
+    el.lobbyStatus.textContent = '対局ルームへの接続に失敗しました。もう一度お試しください。';
+  }
+}
+
+document.querySelector('#onlineRandom').onclick = async () => {
+  const form = new FormData(document.querySelector('#setup'));
+  settings.opponent = 'online';
+  settings.mode = form.get('mode');
+  settings.preset = 'balanced';
+  state = null;
+  online.active = true;
+  online.matcher = new RandomMatchmaker();
+  show('lobby');
+  el.lobbyCode.hidden = true;
+  el.lobbyStatus.textContent = `${settings.mode === 'casual' ? 'カジュアル' : 'クラシック'}で対戦相手を探しています…`;
+  try {
+    await online.matcher.join(settings.mode, (match) => enterMatchedRoom(match));
+  } catch {
+    el.lobbyStatus.textContent = 'ランダムマッチに接続できません。時間をおいて再度お試しください。';
+  }
 };
 
 document.querySelector('#onlineHost').onclick = async () => {

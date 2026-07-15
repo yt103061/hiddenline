@@ -96,6 +96,9 @@
 
         <fieldset class="option-group online-group" id="group-online" hidden>
           <legend>オンライン対戦</legend>
+          <button type="button" id="onlineRandom" class="random-match-button primary">ランダムマッチ</button>
+          <p class="hint random-match-hint">同じ盤面モードで待機中の相手と自動で対戦します。</p>
+          <div class="online-divider"><span>または</span></div>
           <div class="online-panel">
             <button type="button" id="onlineHost" class="primary">部屋を作る</button>
             <div class="online-join form-field">
@@ -161,6 +164,20 @@
               <button id="setupAttack" class="preset-btn" type="button" aria-pressed="false">攻撃</button>
               <button id="setupDefense" class="preset-btn" type="button" aria-pressed="false">守備</button>
               <button id="setupShuffle" class="preset-btn" type="button" aria-pressed="false">シャッフル</button>
+            </div>
+            <div class="custom-presets">
+              <label for="customPresetName">現在の配置を保存</label>
+              <div class="inline-input">
+                <input id="customPresetName" type="text" maxlength="16" placeholder="プリセット名" />
+                <button id="customPresetSave" class="secondary" type="button">保存</button>
+              </div>
+              <label for="customPresetSelect">保存した配置</label>
+              <div class="inline-input custom-preset-actions">
+                <select id="customPresetSelect"><option value="">選択してください</option></select>
+                <button id="customPresetLoad" class="secondary" type="button">適用</button>
+                <button id="customPresetDelete" class="text-button" type="button">削除</button>
+              </div>
+              <p id="customPresetStatus" class="hint" role="status"></p>
             </div>
           </section>
           <div class="setup-actions">

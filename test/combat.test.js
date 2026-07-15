@@ -10,7 +10,7 @@ import {
   isHqContinuation, logicalNeighbors, resolveCombat,
 } from '../src/rules.js';
 import { DIFFICULTIES, evaluateMove } from '../src/ai.js';
-import { PROTOCOL_VERSION } from '../src/online.js';
+import { PROTOCOL_VERSION, selectRandomPair } from '../src/online.js';
 import { battleMessage, logLine } from '../src/text.js';
 
 const attackers = Object.keys(combat.matrix);
@@ -36,7 +36,16 @@ for (const attacker of attackers.filter((id) => !['sp_eagle', 'sp_mouse'].includ
 assert.equal(resolveCombat(combat, 'sp_eagle', 'trap').result, 'WIN');
 assert.equal(resolveCombat(combat, 'sp_mouse', 'trap').result, 'WIN');
 assert.equal(battlepass.rewardTable.length, 50, 'battle pass has all 50 levels');
-assert.equal(PROTOCOL_VERSION, 3, 'online protocol is versioned for synchronized first-turn selection');
+assert.equal(PROTOCOL_VERSION, 4, 'online protocol is versioned for matchmaking and current rules');
+assert.deepEqual(
+  selectRandomPair([
+    { id: 'later', joinedAt: 20 },
+    { id: 'first-b', joinedAt: 10 },
+    { id: 'first-a', joinedAt: 10 },
+  ]).map((player) => player.id),
+  ['first-a', 'first-b'],
+  'random matchmaking pairs the earliest two waiting players deterministically',
+);
 assert.equal(chooseFirstTurn(() => 0), 'south', 'coin toss lower half starts south');
 assert.equal(chooseFirstTurn(() => 0.4999), 'south', 'coin toss boundary below half starts south');
 assert.equal(chooseFirstTurn(() => 0.5), 'north', 'coin toss upper half starts north');
