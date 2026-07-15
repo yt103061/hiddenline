@@ -30,7 +30,7 @@ for (const [attacker, result] of Object.entries(combat.trapDefense.vs)) {
 }
 
 for (const attacker of attackers.filter((id) => !['sp_eagle', 'sp_mouse'].includes(id))) {
-  assert.equal(resolveCombat(combat, attacker, 'trap').trapSelfRemove, true, `${attacker} triggers trap self removal`);
+  assert.equal(resolveCombat(combat, attacker, 'trap').trapSelfRemove, false, `${attacker} leaves the defending trap on the board`);
 }
 
 assert.equal(resolveCombat(combat, 'sp_eagle', 'trap').result, 'WIN');
@@ -147,7 +147,7 @@ const trapState = {
 };
 const afterTrap = applyMove(trapState, { pieceId: 'lion', from: { x: 0, y: 1 }, to: { x: 0, y: 0 }, targetId: 'trap' }, piecesData, combat);
 assert.equal(afterTrap.pieces.find((piece) => piece.id === 'lion').alive, false, 'attacker dies to trap');
-assert.equal(afterTrap.pieces.find((piece) => piece.id === 'trap').alive, false, 'trap self-removes after successful defense');
+assert.equal(afterTrap.pieces.find((piece) => piece.id === 'trap').alive, true, 'trap remains after successful defense');
 assert.equal(afterTrap.pieces.some((piece) => piece.revealed), false, 'combat never reveals either piece');
 assert.ok(afterTrap.pieces.every((piece) => !(piece.history || []).join(' ').includes('trap')), 'piece history stores results without enemy types');
 const trapEvent = afterTrap.log.at(-1);

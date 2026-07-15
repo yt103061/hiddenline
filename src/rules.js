@@ -270,8 +270,8 @@ export function resolveCombat(combat, attackerType, defenderType) {
   return {
     result,
     attackerRemoved: result !== 'WIN',
-    defenderRemoved: result !== 'LOSE' || defenderType === 'trap',
-    trapSelfRemove: defenderType === 'trap' && result === 'LOSE',
+    defenderRemoved: result !== 'LOSE',
+    trapSelfRemove: false,
   };
 }
 

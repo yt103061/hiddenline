@@ -1,7 +1,7 @@
 {
   "note": "attacker perspective. WIN=attacker survives, LOSE=attacker removed, DRAW=both removed.",
   "specialRules": {
-    "trap": "defense only. loses to sp_eagle & sp_mouse. wins vs all others but self-destructs (trapSelfRemove).",
+    "trap": "defense only. loses to sp_eagle & sp_mouse. wins vs all others and remains on the board.",
     "base": "not combat. if stepped by capture-eligible piece -> game over (occupied)."
   },
   "matrix": {
@@ -262,6 +262,6 @@
       "sp_eagle": "WIN",
       "sp_mouse": "WIN"
     },
-    "trapSelfRemoveWhenAttackerLoses": true
+    "trapSelfRemoveWhenAttackerLoses": false
   }
 }
