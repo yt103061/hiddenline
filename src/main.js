@@ -8,6 +8,7 @@ import { grantBattlePoints } from './battlepass.js';
 import { renderBoard, updateSelection, renderLog, renderInfo, renderOverlay, renderHud, message } from './render.js';
 import { animateMove, showBattleCutIn } from './fx.js';
 import { openGuide } from './guide.js';
+import { OnlineRoom, generateRoomCode } from './online.js';
 import {
   playerNames, turnMessage, selectMessage, battleMessage,
   inspectMessage, resultTitle, resultReason, opponentOf,
@@ -34,6 +35,19 @@ const setup = {
   awaitingHandover: false,
 };
 
+const online = {
+  active: false,
+  room: null,
+  code: null,
+  myRole: null,
+  isHost: false,
+  configSent: false,
+  ready: false,
+  opponentReady: false,
+  myFormation: null,
+  opponentFormation: null,
+};
+
 const el = {
   board: document.querySelector('#board'),
   fx: document.querySelector('#fx'),
@@ -51,6 +65,8 @@ const el = {
   setupBoard: document.querySelector('#setupBoard'),
   setupBridges: document.querySelector('#setupBridges'),
   setupStatus: document.querySelector('#setupStatus'),
+  lobbyStatus: document.querySelector('#lobbyStatus'),
+  lobbyCode: document.querySelector('#lobbyCode'),
 };
 
 function show(screen) {
@@ -138,6 +154,10 @@ async function performMove(move) {
 async function playMove(move) {
   const battle = await performMove(move);
 
+  if (online.active) {
+    online.room.send('move', { move });
+  }
+
   if (state.winner) {
     finishGame();
     return;
@@ -150,9 +170,21 @@ async function playMove(move) {
       if (seq !== ui.gameSeq) return;
       aiTurn();
     }, 600);
+  } else if (online.active) {
+    message(battle ? battleMessage(battle, piecesData, ui.names) : turnMessage(state, ui.names, 'online'));
   } else {
     showHandover(battle);
   }
+}
+
+async function applyOnlineMove(move) {
+  if (!state || state.winner || ui.busy) return;
+  const battle = await performMove(move);
+  if (state.winner) {
+    finishGame();
+    return;
+  }
+  message(battle ? battleMessage(battle, piecesData, ui.names) : turnMessage(state, ui.names, 'online'));
 }
 
 async function aiTurn() {
@@ -198,7 +230,8 @@ function finishGame() {
   if (settings.opponent === 'ai') grantBattlePoints(70);
   message(resultTitle(state, ui.names, settings.opponent));
   el.resultTitle.textContent = resultTitle(state, ui.names, settings.opponent);
-  el.resultTitle.className = state.winner === 'draw' ? 'draw' : state.winner === 'south' ? 'win' : 'lose';
+  const me = online.active ? online.myRole : 'south';
+  el.resultTitle.className = state.winner === 'draw' ? 'draw' : state.winner === me ? 'win' : 'lose';
   el.resultReason.textContent = resultReason(state);
   el.resultDialog.showModal();
 }
@@ -210,12 +243,18 @@ document.querySelector('#setup').onsubmit = (event) => {
   settings.mode = form.get('mode');
   settings.preset = form.get('preset');
   settings.difficulty = form.get('difficulty');
+  if (settings.opponent === 'online') {
+    message('「部屋を作る」または「部屋に入る」を選んでください。');
+    return;
+  }
   newGame();
 };
 
 for (const radio of document.querySelectorAll('input[name="opponent"]')) {
   radio.onchange = () => {
-    document.querySelector('#group-difficulty').hidden = radio.value === 'human' && radio.checked;
+    if (!radio.checked) return;
+    document.querySelector('#group-difficulty').hidden = radio.value !== 'ai';
+    document.querySelector('#group-online').hidden = radio.value !== 'online';
   };
 }
 
@@ -225,6 +264,7 @@ document.querySelector('#resign').onclick = () => {
   if (!confirm(`${ui.names[loser]}が投了します。よろしいですか？`)) return;
   state.winner = opponentOf(loser);
   state.reason = 'resign';
+  if (online.active) online.room.send('resign');
   finishGame();
 };
 
@@ -232,19 +272,43 @@ document.querySelector('#goHome').onclick = () => {
   if (state && !state.winner && !confirm('対局を中断してホームに戻りますか？')) return;
   cancelPendingAi();
   el.handover.hidden = true;
+  leaveOnlineRoom();
   show('home');
 };
 
 document.querySelector('#rematch').onclick = () => {
   el.resultDialog.close();
+  if (online.active) {
+    leaveOnlineRoom();
+    show('home');
+    return;
+  }
   newGame();
   el.board.querySelector('.cell')?.focus();
 };
 
 document.querySelector('#resultHome').onclick = () => {
   el.resultDialog.close();
+  leaveOnlineRoom();
   show('home');
 };
+
+function leaveOnlineRoom() {
+  if (online.room) {
+    if (state && !state.winner) online.room.send('resign');
+    online.room.leave();
+  }
+  online.active = false;
+  online.room = null;
+  online.code = null;
+  online.myRole = null;
+  online.isHost = false;
+  online.configSent = false;
+  online.ready = false;
+  online.opponentReady = false;
+  online.myFormation = null;
+  online.opponentFormation = null;
+}
 
 document.querySelector('#openHelpHome').onclick = () => openGuide(piecesData);
 document.querySelector('#openHelpGame').onclick = () => openGuide(piecesData);
@@ -261,15 +325,33 @@ function startSetupScreen() {
   show('setup');
 }
 
+function onlineNames() {
+  return online.myRole === 'south'
+    ? { south: 'あなた', north: '相手' }
+    : { south: '相手', north: 'あなた' };
+}
+
 function setupPlayerNames() {
+  if (online.active) return onlineNames();
   return playerNames(settings.opponent);
 }
 
 function updateSetupStatus() {
   const names = setupPlayerNames();
+  const startBtn = document.querySelector('#setupStart');
+
+  if (online.active) {
+    el.setupStatus.textContent = online.ready
+      ? '相手の準備を待っています…'
+      : `${names[online.myRole]}の駒を並べてください。駒を2つタップすると入れ替わります。`;
+    startBtn.textContent = online.ready ? '待機中…' : '準備完了';
+    startBtn.disabled = online.ready;
+    return;
+  }
+
+  startBtn.disabled = false;
   const who = settings.opponent === 'ai' ? 'あなた' : names[setup.editingOwner];
   el.setupStatus.textContent = `${who}の駒を並べてください。駒を2つタップすると入れ替わります。`;
-  const startBtn = document.querySelector('#setupStart');
   startBtn.textContent = settings.opponent === 'human' && setup.editingOwner === 'south' ? '次のプレイヤーへ' : '対局開始';
 }
 
@@ -331,6 +413,7 @@ function shuffleFormation() {
 
 document.querySelector('#setupHome').onclick = () => {
   setup.active = false;
+  leaveOnlineRoom();
   show('home');
 };
 
@@ -340,6 +423,16 @@ document.querySelector('#setupDefense').onclick = () => applyPreset('defense');
 document.querySelector('#setupShuffle').onclick = () => shuffleFormation();
 
 document.querySelector('#setupStart').onclick = () => {
+  if (online.active) {
+    if (online.ready) return;
+    online.ready = true;
+    online.myFormation = setup.formations[online.myRole];
+    online.room.send('ready', { formation: online.myFormation });
+    updateSetupStatus();
+    maybeStartOnlineGame();
+    return;
+  }
+
   if (settings.opponent === 'human' && setup.editingOwner === 'south') {
     setup.awaitingHandover = true;
     const names = setupPlayerNames();
@@ -365,5 +458,150 @@ function finishSetupAndStartGame() {
   redraw();
   message(turnMessage(state, ui.names, settings.opponent));
 }
+
+function startOnlineSetup() {
+  setup.active = true;
+  setup.editingOwner = online.myRole;
+  setup.awaitingHandover = false;
+  setup.formations[online.myRole] = buildFormation(settings.mode, settings.preset, online.myRole);
+  setup.selected = null;
+  online.ready = false;
+  online.opponentReady = false;
+  online.opponentFormation = null;
+  online.myFormation = null;
+  renderSetupBoard();
+  show('setup');
+}
+
+function maybeStartOnlineGame() {
+  if (!online.ready || !online.opponentReady) return;
+  const southFormation = online.myRole === 'south' ? online.myFormation : online.opponentFormation;
+  const northFormation = online.myRole === 'north' ? online.myFormation : online.opponentFormation;
+
+  setup.active = false;
+  state = createGameFromFormations(settings.mode, southFormation, northFormation);
+  ui.names = onlineNames();
+  ui.viewer = online.myRole;
+  ui.selected = null;
+  ui.selectedMoves = [];
+  ui.lastMove = null;
+  ui.busy = false;
+  el.handover.hidden = true;
+  show('game');
+  redraw();
+  message(turnMessage(state, ui.names, 'online'));
+}
+
+function wireOnlineHandlers() {
+  online.room.on('config', ({ mode }) => {
+    settings.mode = mode;
+    startOnlineSetup();
+  });
+
+  online.room.on('ready', ({ formation }) => {
+    online.opponentFormation = formation;
+    online.opponentReady = true;
+    maybeStartOnlineGame();
+  });
+
+  online.room.on('move', ({ move }) => {
+    applyOnlineMove(move);
+  });
+
+  online.room.on('resign', () => {
+    if (!state || state.winner) return;
+    state.winner = online.myRole;
+    state.reason = 'resign';
+    finishGame();
+  });
+
+  online.room.on('presence', (count) => {
+    if (online.isHost && count >= 2 && !online.configSent) {
+      online.configSent = true;
+      online.room.send('config', { mode: settings.mode });
+      startOnlineSetup();
+    }
+  });
+
+  online.room.on('leave', () => {
+    if (state && !state.winner) {
+      state.winner = online.myRole;
+      state.reason = 'resign';
+      finishGame();
+    } else if (!state) {
+      el.lobbyStatus.textContent = '相手が退出しました。もう一度お試しください。';
+    }
+  });
+}
+
+document.querySelector('#onlineCodeInput').oninput = (event) => {
+  event.target.value = event.target.value.toUpperCase();
+};
+
+document.querySelector('#onlineHost').onclick = async () => {
+  const form = new FormData(document.querySelector('#setup'));
+  settings.opponent = 'online';
+  settings.mode = form.get('mode');
+  settings.preset = form.get('preset');
+
+  online.active = true;
+  online.myRole = 'south';
+  online.isHost = true;
+  online.code = generateRoomCode();
+  online.room = new OnlineRoom();
+
+  show('lobby');
+  el.lobbyStatus.textContent = '部屋を準備しています…';
+  el.lobbyCode.hidden = true;
+  wireOnlineHandlers();
+
+  try {
+    await online.room.host(online.code);
+  } catch {
+    el.lobbyStatus.textContent = 'オンライン対戦に接続できません。時間をおいて再度お試しください。';
+    return;
+  }
+
+  el.lobbyStatus.textContent = '相手を待っています。部屋コードを伝えてください。';
+  el.lobbyCode.textContent = online.code;
+  el.lobbyCode.hidden = false;
+};
+
+document.querySelector('#onlineJoin').onclick = async () => {
+  const codeInput = document.querySelector('#onlineCodeInput');
+  const code = codeInput.value.trim().toUpperCase();
+  if (code.length !== 4) {
+    message('4文字の部屋コードを入力してください。');
+    return;
+  }
+  const form = new FormData(document.querySelector('#setup'));
+  settings.opponent = 'online';
+  settings.preset = form.get('preset');
+
+  online.active = true;
+  online.myRole = 'north';
+  online.isHost = false;
+  online.code = code;
+  online.room = new OnlineRoom();
+
+  show('lobby');
+  el.lobbyStatus.textContent = '接続しています…';
+  el.lobbyCode.hidden = true;
+  wireOnlineHandlers();
+
+  try {
+    await online.room.guest(code);
+  } catch {
+    el.lobbyStatus.textContent = 'オンライン対戦に接続できません。部屋コードを確認してください。';
+    return;
+  }
+
+  el.lobbyStatus.textContent = 'ホストの準備を待っています…';
+};
+
+document.querySelector('#lobbyHome').onclick = () => {
+  leaveOnlineRoom();
+  show('home');
+};
 
 show('home');

@@ -29,7 +29,24 @@
               <span class="option-title">👥 2人で対戦</span>
               <span class="option-desc">ひとつの端末を交代で使って対戦します。</span>
             </label>
+            <label class="option-card">
+              <input type="radio" name="opponent" value="online" />
+              <span class="option-title">🌐 オンライン対戦</span>
+              <span class="option-desc">部屋コードで離れた相手と対戦します。</span>
+            </label>
           </div>
+        </fieldset>
+
+        <fieldset class="option-group" id="group-online" hidden>
+          <legend>オンライン対戦</legend>
+          <div class="online-panel">
+            <button type="button" id="onlineHost" class="ghost">🏠 部屋を作る</button>
+            <div class="online-join">
+              <input type="text" id="onlineCodeInput" maxlength="4" placeholder="部屋コード" autocomplete="off" autocapitalize="characters" />
+              <button type="button" id="onlineJoin" class="ghost">🚪 部屋に入る</button>
+            </div>
+          </div>
+          <p class="hint">盤のルール（カジュアル／クラシック）は部屋を作った側（ホスト）の設定が適用されます。駒の並べ方はそれぞれの画面で自分で編集できます。</p>
         </fieldset>
 
         <fieldset class="option-group">
@@ -38,12 +55,12 @@
             <label class="option-card">
               <input type="radio" name="mode" value="casual" checked />
               <span class="option-title">🌱 カジュアル</span>
-              <span class="option-desc">6×6の盤・各10駒。まずはここから。約5分。</span>
+              <span class="option-desc">4×7の盤・駒10+巣。まずはここから。約5分。</span>
             </label>
             <label class="option-card">
               <input type="radio" name="mode" value="classic" />
               <span class="option-title">🌳 クラシック</span>
-              <span class="option-desc">6×9の盤・各23駒。全部の動物が登場。約15分。</span>
+              <span class="option-desc">8×9の盤・駒30+巣。全部の動物が登場。約15分。</span>
             </label>
           </div>
         </fieldset>
@@ -100,6 +117,19 @@
           <button type="button" id="openHelpHome" class="ghost">遊び方</button>
         </div>
       </form>
+    </section>
+
+    <section id="screen-lobby" class="screen">
+      <header class="game-bar">
+        <img src="assets/logo.svg" alt="HIDDEN LINE" class="bar-logo" />
+        <div class="bar-actions">
+          <button id="lobbyHome" class="ghost" type="button">ホームへ</button>
+        </div>
+      </header>
+      <div class="lobby-card">
+        <p id="lobbyStatus" role="status">接続中…</p>
+        <p id="lobbyCode" class="room-code" hidden></p>
+      </div>
     </section>
 
     <section id="screen-setup" class="screen">
