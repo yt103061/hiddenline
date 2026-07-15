@@ -9,7 +9,7 @@ import {
   applyMove, bridgeEdges, canonicalPosition, checkVictory, generateMovesForPiece, hqCell,
   isHqContinuation, logicalNeighbors, resolveCombat,
 } from '../src/rules.js';
-import { DIFFICULTIES, evaluateMove } from '../src/ai.js';
+import { DIFFICULTIES, chooseAiMove, evaluateMove } from '../src/ai.js';
 import { PROTOCOL_VERSION, selectRandomPair } from '../src/online.js';
 import { battleMessage, logLine } from '../src/text.js';
 
@@ -287,6 +287,32 @@ assert.notEqual(
   evaluateMove(hiddenState('rank_09'), hiddenMove, piecesData, combat, DIFFICULTIES.oni),
   'oni difficulty deliberately uses the disclosed full-information handicap',
 );
+
+const tacticalBoard = { cols: 5, rows: 6, riverRow: 99, bridges: [] };
+const attackState = {
+  mode: 'casual',
+  board: tacticalBoard,
+  turn: 'north',
+  strength: boards.strengthPointsForTiebreak,
+  pieces: [
+    { id: 'ai-lion', owner: 'north', type: 'rank_01', x: 2, y: 2, alive: true },
+    { id: 'enemy', owner: 'south', type: 'rank_09', x: 2, y: 3, alive: true },
+  ],
+};
+assert.equal(chooseAiMove(attackState, piecesData, combat, 'advanced').targetId, 'enemy', 'advanced AI takes a favorable adjacent battle');
+
+const dangerState = {
+  mode: 'casual',
+  board: tacticalBoard,
+  turn: 'north',
+  strength: boards.strengthPointsForTiebreak,
+  pieces: [
+    { id: 'ai-rabbit', owner: 'north', type: 'rank_09', x: 2, y: 2, alive: true },
+    { id: 'enemy-lion', owner: 'south', type: 'rank_01', x: 2, y: 4, alive: true },
+  ],
+};
+const cautiousMove = chooseAiMove(dangerState, piecesData, combat, 'advanced');
+assert.notDeepEqual(cautiousMove.to, { x: 2, y: 3 }, 'advanced AI avoids stepping next to an enemy when safer moves exist');
 
 for (const definition of piecesData.pieces) {
   assert.ok(definition.asset, `${definition.id} declares an asset`);
