@@ -4,7 +4,7 @@ import battlepass from '../data/battlepass.json' with { type: 'json' };
 import piecesData from '../data/pieces.json' with { type: 'json' };
 import combat from '../data/combat_matrix.json' with { type: 'json' };
 import boards from '../data/boards.json' with { type: 'json' };
-import { buildFormation, createGame } from '../src/state.js';
+import { buildFormation, chooseFirstTurn, createGame, createGameFromFormations } from '../src/state.js';
 import {
   applyMove, bridgeEdges, canonicalPosition, generateMovesForPiece, hqCell,
   isHqContinuation, logicalNeighbors, resolveCombat,
@@ -35,7 +35,10 @@ for (const attacker of attackers.filter((id) => !['sp_eagle', 'sp_mouse'].includ
 assert.equal(resolveCombat(combat, 'sp_eagle', 'trap').result, 'WIN');
 assert.equal(resolveCombat(combat, 'sp_mouse', 'trap').result, 'WIN');
 assert.equal(battlepass.rewardTable.length, 50, 'battle pass has all 50 levels');
-assert.equal(PROTOCOL_VERSION, 2, 'online protocol is versioned for composite headquarters coordinates');
+assert.equal(PROTOCOL_VERSION, 3, 'online protocol is versioned for synchronized first-turn selection');
+assert.equal(chooseFirstTurn(() => 0), 'south', 'coin toss lower half starts south');
+assert.equal(chooseFirstTurn(() => 0.4999), 'south', 'coin toss boundary below half starts south');
+assert.equal(chooseFirstTurn(() => 0.5), 'north', 'coin toss upper half starts north');
 
 for (const [mode, expectedCount] of [['casual', 11], ['classic', 31]]) {
   const game = createGame(mode);
@@ -47,6 +50,12 @@ for (const [mode, expectedCount] of [['casual', 11], ['classic', 31]]) {
   assert.equal(south.filter((piece) => piece.x === southHq.x && piece.y === southHq.y).length, 1, `${mode} headquarters holds one piece`);
   assert.ok(south.every((piece) => !isHqContinuation(board, piece)), `${mode} never stores a piece on the headquarters continuation`);
   assert.equal(canonicalPosition(board, { x: southHq.x + 1, y: southHq.y }).x, southHq.x, `${mode} headquarters continuation canonicalizes to anchor`);
+}
+
+{
+  const south = buildFormation('casual', 'balanced', 'south');
+  const north = buildFormation('casual', 'balanced', 'north');
+  assert.equal(createGameFromFormations('casual', south, north, 'north').turn, 'north', 'game accepts a randomized opening turn');
 }
 
 assert.equal(piecesData.pieces.find((piece) => piece.id === 'rank_09').count_casual, 2, 'casual adds one rabbit');

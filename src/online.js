@@ -1,7 +1,7 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 
 const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 export function generateRoomCode() {
   let code = '';

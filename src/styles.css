@@ -857,6 +857,71 @@ body[data-screen="lobby"] #screen-lobby {
   background: rgb(10 35 27 / 96%);
 }
 
+.coin-toss {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(7 28 22 / 82%);
+  backdrop-filter: blur(8px);
+}
+
+.coin-toss[hidden] { display: none; }
+
+.coin-toss-card {
+  width: min(360px, 100%);
+  padding: 30px 24px;
+  border: 2px solid rgb(255 255 255 / 18%);
+  border-radius: 24px;
+  color: #fff;
+  text-align: center;
+  background: #12372b;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 40%);
+}
+
+.coin-toss-card h2 { margin: 4px 0 22px; }
+
+.coin {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  margin: 0 auto 22px;
+  transform-style: preserve-3d;
+}
+
+.coin.is-tossing { animation: coin-toss 1.35s cubic-bezier(.2,.8,.2,1) both; }
+.coin.is-north { transform: rotateY(180deg); }
+
+.coin-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 6px solid #f6c453;
+  border-radius: 50%;
+  color: #12372b;
+  font: 800 42px/1 system-ui, sans-serif;
+  background: radial-gradient(circle at 35% 28%, #fff8c9, #e5a82d 75%);
+  box-shadow: inset 0 0 0 4px rgb(255 255 255 / 30%), 0 10px 28px rgb(0 0 0 / 35%);
+  backface-visibility: hidden;
+}
+
+.coin-face img { width: 58px; height: 58px; }
+.coin-back { transform: rotateY(180deg); }
+.coin-toss-status { min-height: 1.5em; margin: 0; font-weight: 800; }
+
+@keyframes coin-toss {
+  0% { transform: translateY(0) rotateY(0); }
+  45% { transform: translateY(-90px) rotateY(720deg) scale(1.08); }
+  100% { transform: translateY(0) rotateY(var(--coin-end, 1080deg)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coin.is-tossing { animation: none; }
+}
+
 .handover-card {
   max-width: 420px;
   padding: 30px;

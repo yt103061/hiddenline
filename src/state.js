@@ -10,18 +10,22 @@ export function buildFormation(mode = 'casual', preset = 'balanced', owner = 'so
   return formation(pieceList, preset, owner, board);
 }
 
-export function createGameFromFormations(mode = 'casual', south, north) {
+export function createGameFromFormations(mode = 'casual', south, north, firstTurn = 'south') {
   const board = boards[mode];
   return {
     mode,
     board,
-    turn: 'south',
+    turn: firstTurn,
     moveCount: 0,
     maxMoves: boards.maxMoves,
     strength: boards.strengthPointsForTiebreak,
     clocks: { south: boards.clockSec, north: boards.clockSec },
     pieces: [...south, ...north],
   };
+}
+
+export function chooseFirstTurn(random = Math.random) {
+  return random() < 0.5 ? 'south' : 'north';
 }
 
 export function createGame(mode = 'casual', preset = 'balanced') {

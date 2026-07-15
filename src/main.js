@@ -1,7 +1,7 @@
 import piecesData from '../data/pieces.json' with { type: 'json' };
 import combat from '../data/combat_matrix.json' with { type: 'json' };
 import boards from '../data/boards.json' with { type: 'json' };
-import { createGame, buildFormation, createGameFromFormations, swapFormationPieces } from './state.js';
+import { createGame, buildFormation, createGameFromFormations, swapFormationPieces, chooseFirstTurn } from './state.js';
 import { applyMove, generateMovesForPiece, pieceById } from './rules.js';
 import { chooseAiMove } from './ai.js';
 import { grantBattlePoints } from './battlepass.js';
@@ -51,6 +51,8 @@ const online = {
   opponentReady: false,
   myFormation: null,
   opponentFormation: null,
+  startSent: false,
+  pendingFirstTurn: null,
 };
 
 const el = {
@@ -83,7 +85,34 @@ const el = {
   setupSelectionRole: document.querySelector('#setupSelectionRole'),
   setupSelectionMove: document.querySelector('#setupSelectionMove'),
   classicHint: document.querySelector('#classicHint'),
+  coinToss: document.querySelector('#coinToss'),
+  coin: document.querySelector('#coin'),
+  coinTossStatus: document.querySelector('#coinTossStatus'),
 };
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function runCoinToss(firstTurn, names) {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  el.coinToss.hidden = false;
+  el.coinTossStatus.textContent = 'コインを投げます…';
+  el.coin.classList.remove('is-tossing', 'is-north');
+  el.coin.style.setProperty('--coin-end', firstTurn === 'north' ? '1260deg' : '1080deg');
+  void el.coin.offsetWidth;
+  el.coin.classList.add('is-tossing');
+  await wait(reduced ? 180 : 1450);
+  el.coin.classList.remove('is-tossing');
+  el.coin.classList.toggle('is-north', firstTurn === 'north');
+  el.coinTossStatus.textContent = `${names[firstTurn]}が先攻です！`;
+  await wait(reduced ? 350 : 900);
+  el.coinToss.hidden = true;
+}
+
+function scheduleOpeningAiTurn() {
+  if (settings.opponent !== 'ai' || state?.turn !== 'north' || state.winner) return;
+  clearTimeout(ui.aiTimer);
+  ui.aiTimer = setTimeout(aiTurn, 500);
+}
 
 function show(screen, { record = true, replace = false } = {}) {
   document.body.dataset.screen = screen;
@@ -304,6 +333,7 @@ async function applyOnlineMove(move) {
 }
 
 async function aiTurn() {
+  if (!state || state.winner || state.turn !== 'north' || ui.busy) return;
   const move = chooseAiMove(state, piecesData, combat, settings.difficulty);
   if (!move) {
     gameMessage(turnMessage(state, ui.names, settings.opponent));
@@ -439,6 +469,8 @@ function leaveOnlineRoom() {
   online.opponentReady = false;
   online.myFormation = null;
   online.opponentFormation = null;
+  online.startSent = false;
+  online.pendingFirstTurn = null;
 }
 
 document.querySelector('#openHelpHome').onclick = () => openGuide(piecesData);
@@ -638,20 +670,25 @@ document.querySelector('#setupStart').onclick = () => {
   finishSetupAndStartGame();
 };
 
-function finishSetupAndStartGame() {
+async function finishSetupAndStartGame() {
   setup.active = false;
-  state = createGameFromFormations(settings.mode, setup.formations.south, setup.formations.north);
+  const firstTurn = chooseFirstTurn();
+  state = createGameFromFormations(settings.mode, setup.formations.south, setup.formations.north, firstTurn);
   ui.names = playerNames(settings.opponent);
-  ui.viewer = 'south';
+  ui.viewer = settings.opponent === 'human' ? firstTurn : 'south';
   ui.selected = null;
   ui.selectedMoves = [];
   ui.lastMove = null;
-  ui.busy = false;
+  ui.busy = true;
   el.handover.hidden = true;
   show('game');
   redraw();
+  gameMessage('コイントスで先攻を決めています…');
+  await runCoinToss(firstTurn, ui.names);
+  ui.busy = false;
   gameMessage(turnMessage(state, ui.names, settings.opponent));
   persistSession('game');
+  scheduleOpeningAiTurn();
 }
 
 function startOnlineSetup() {
@@ -666,26 +703,46 @@ function startOnlineSetup() {
   online.opponentReady = false;
   online.opponentFormation = null;
   online.myFormation = null;
+  online.startSent = false;
+  online.pendingFirstTurn = null;
   renderSetupBoard();
   show('setup');
 }
 
 function maybeStartOnlineGame() {
   if (!online.ready || !online.opponentReady) return;
+  if (online.pendingFirstTurn) {
+    const firstTurn = online.pendingFirstTurn;
+    online.pendingFirstTurn = null;
+    startOnlineGame(firstTurn);
+    return;
+  }
+  if (!online.isHost || online.startSent) return;
+  online.startSent = true;
+  const firstTurn = chooseFirstTurn();
+  online.room.send('start', { firstTurn });
+  startOnlineGame(firstTurn);
+}
+
+async function startOnlineGame(firstTurn) {
+  if (state || !online.ready || !online.opponentReady) return;
   const southFormation = online.myRole === 'south' ? online.myFormation : online.opponentFormation;
   const northFormation = online.myRole === 'north' ? online.myFormation : online.opponentFormation;
 
   setup.active = false;
-  state = createGameFromFormations(settings.mode, southFormation, northFormation);
+  state = createGameFromFormations(settings.mode, southFormation, northFormation, firstTurn);
   ui.names = onlineNames();
   ui.viewer = online.myRole;
   ui.selected = null;
   ui.selectedMoves = [];
   ui.lastMove = null;
-  ui.busy = false;
+  ui.busy = true;
   el.handover.hidden = true;
   show('game');
   redraw();
+  gameMessage('コイントスで先攻を決めています…');
+  await runCoinToss(firstTurn, ui.names);
+  ui.busy = false;
   gameMessage(turnMessage(state, ui.names, 'online'));
 }
 
@@ -704,6 +761,12 @@ function wireOnlineHandlers() {
   online.room.on('ready', ({ formation }) => {
     online.opponentFormation = formation;
     online.opponentReady = true;
+    maybeStartOnlineGame();
+  });
+
+  online.room.on('start', ({ firstTurn }) => {
+    if (firstTurn !== 'south' && firstTurn !== 'north') return;
+    online.pendingFirstTurn = firstTurn;
     maybeStartOnlineGame();
   });
 
@@ -747,6 +810,7 @@ document.querySelector('#onlineHost').onclick = async () => {
   settings.mode = form.get('mode');
   settings.preset = 'balanced';
   homeMessage('部屋を準備しています。');
+  state = null;
 
   online.active = true;
   online.myRole = 'south';
@@ -785,6 +849,7 @@ document.querySelector('#onlineJoin').onclick = async () => {
   settings.opponent = 'online';
   settings.preset = 'balanced';
   homeMessage('部屋へ接続しています。');
+  state = null;
 
   online.active = true;
   online.myRole = 'north';

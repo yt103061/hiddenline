@@ -207,6 +207,18 @@
       </div>
     </div>
 
+    <div id="coinToss" class="coin-toss" hidden role="dialog" aria-modal="true" aria-labelledby="coinTossTitle">
+      <div class="coin-toss-card">
+        <p class="panel-label">先攻・後攻を決めます</p>
+        <h2 id="coinTossTitle">コイントス</h2>
+        <div class="coin" id="coin" aria-hidden="true">
+          <span class="coin-face coin-front"><img src="assets/app_icon.svg" alt="" /></span>
+          <span class="coin-face coin-back">H</span>
+        </div>
+        <p id="coinTossStatus" class="coin-toss-status" role="status">コインを投げます…</p>
+      </div>
+    </div>
+
     <dialog id="result-dialog">
       <h2 id="resultTitle"></h2>
       <p id="resultReason"></p>
