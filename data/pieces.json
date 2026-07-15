@@ -19,7 +19,7 @@
       "asset": "assets/char_tiger.svg",
       "rankOrder": 2,
       "count_classic": 1,
-      "count_casual": 0,
+      "count_casual": 1,
       "canCapture": true,
       "move": "step1",
       "role": "general"
@@ -31,7 +31,7 @@
       "asset": "assets/char_bear.svg",
       "rankOrder": 3,
       "count_classic": 1,
-      "count_casual": 0,
+      "count_casual": 1,
       "canCapture": true,
       "move": "step1",
       "role": "general"
@@ -55,7 +55,7 @@
       "asset": "assets/char_leopard.svg",
       "rankOrder": 5,
       "count_classic": 1,
-      "count_casual": 0,
+      "count_casual": 1,
       "canCapture": true,
       "move": "step1",
       "role": "general"
@@ -79,7 +79,7 @@
       "asset": "assets/char_fox.svg",
       "rankOrder": 7,
       "count_classic": 4,
-      "count_casual": 1,
+      "count_casual": 0,
       "canCapture": false,
       "move": "step1",
       "role": "officer"
@@ -91,7 +91,7 @@
       "asset": "assets/char_raccoon.svg",
       "rankOrder": 8,
       "count_classic": 4,
-      "count_casual": 1,
+      "count_casual": 0,
       "canCapture": false,
       "move": "step1",
       "role": "officer"
@@ -103,7 +103,7 @@
       "asset": "assets/char_rabbit.svg",
       "rankOrder": 9,
       "count_classic": 5,
-      "count_casual": 2,
+      "count_casual": 0,
       "canCapture": false,
       "move": "step1",
       "role": "officer"
@@ -151,7 +151,7 @@
       "asset": "assets/char_rhino.svg",
       "rankOrder": 53,
       "count_classic": 2,
-      "count_casual": 0,
+      "count_casual": 1,
       "canCapture": false,
       "move": "cavalry",
       "role": "special"
@@ -185,20 +185,21 @@
   "moveDefs": {
     "step1": "orthogonal 1 tile",
     "cavalry": "forward 2 tiles OR back/side 1 tile, no jump",
-    "flyer": "vertical multi-tile straight (no jump) + horizontal 1, may cross river without using crossing point",
+    "flyer": "vertical multi-tile straight (may jump pieces) + horizontal 1, may cross river without using crossing point",
     "runner": "vertical/horizontal multi-tile straight, no turn, no jump",
     "none": "cannot move"
   },
   "casualPieceSet": [
     "rank_01",
+    "rank_02",
+    "rank_03",
     "rank_04",
+    "rank_05",
     "rank_06",
-    "rank_07",
-    "rank_08",
-    "rank_09",
     "sp_snake",
     "sp_mouse",
     "sp_eagle",
+    "sp_rhino",
     "trap"
   ]
 }

@@ -12,7 +12,7 @@ import { OnlineRoom, generateRoomCode } from './online.js';
 import {
   playerNames, turnMessage, selectMessage, battleMessage,
   inspectMessage, resultTitle, resultReason, opponentOf,
-  MOVE_TEXT, ROLE_TEXT,
+  MOVE_TEXT, roleText,
 } from './text.js';
 
 const settings = { opponent: 'ai', mode: 'casual', preset: 'balanced', difficulty: 'intermediate' };
@@ -561,7 +561,7 @@ function updateSetupSelection() {
   const def = pieceById(piecesData, piece.type);
   el.setupSelectionToken.append(tokenEl(piece.owner, def.asset, def.name));
   el.setupSelectionName.textContent = def.name;
-  el.setupSelectionRole.textContent = ROLE_TEXT[def.role];
+  el.setupSelectionRole.textContent = roleText(def);
   el.setupSelectionMove.textContent = MOVE_TEXT[def.move];
 }
 

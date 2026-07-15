@@ -1,4 +1,4 @@
-import { MOVE_TEXT, ROLE_TEXT } from './text.js';
+import { MOVE_TEXT, roleText } from './text.js';
 
 const MOVE_DOTS = {
   step1: [[0, -1], [0, 1], [-1, 0], [1, 0]],
@@ -27,8 +27,8 @@ function buildGuide(data) {
       <h3>ゲームの目的</h3>
       <ul>
         <li>相手の駒は戦闘後も裏向きです。勝ち・負け・相打ちの結果から正体を推理します。</li>
-        <li>将官の駒で相手の<strong>本陣（巣）</strong>に入れば勝ちです。</li>
-        <li>相手に動ける駒、または本陣を落とせる将官がいなくなっても勝ちです。</li>
+        <li>少佐以上の駒で相手の<strong>本陣（巣）</strong>に入れば勝ちです。</li>
+        <li>相手に動ける駒、または本陣を占領できる駒がいなくなっても勝ちです。</li>
       </ul>
     </section>
     <section class="guide-section">
@@ -37,7 +37,7 @@ function buildGuide(data) {
         <li>盤の中央には<strong>川</strong>が流れていて、そのままでは渡れません。</li>
         <li>左右2か所に<strong>中州（飛び石）</strong>があります。岸のマスから中州へ、中州から対岸の岸へ、ななめに1マスずつ進むことで渡れます。</li>
         <li>どの動物も、この突入口を使えば川を渡れます。</li>
-        <li>ワシだけは突入口を使わず、川をまっすぐ飛び越えられます。</li>
+        <li>ワシだけは突入口を使わず、川と途中の駒をまっすぐ飛び越えられます。</li>
       </ul>
     </section>
     <section class="guide-section">
@@ -47,7 +47,7 @@ function buildGuide(data) {
         <li><strong>ヘビはライオンにだけ勝てます。</strong>ほかの相手には負けます。</li>
         <li><strong>ハチの巣（罠）</strong>は動けませんが、触れた駒を返り討ちにします（自分も壊れます）。</li>
         <li><strong>ワシとネズミ</strong>だけがハチの巣（罠）を無傷で取り除けます。</li>
-        <li>本陣（巣）に入れるのは将官の駒だけです。</li>
+        <li>本陣（巣）に入れるのは少佐以上（ライオン〜イノシシ）の駒です。</li>
       </ul>
     </section>
     <section class="guide-section">
@@ -67,7 +67,7 @@ function pieceCard(def, data) {
       ${badge}
       <div class="guide-piece-info">
         <strong>${def.name}${casual}</strong>
-        <span class="guide-role">${ROLE_TEXT[def.role]}${rank ? ' ・ ' : ''}${rank}</span>
+        <span class="guide-role">${roleText(def)}${rank ? ' ・ ' : ''}${rank}</span>
         <span class="guide-move">${MOVE_TEXT[def.move]}</span>
       </div>
       ${miniGrid(def.move)}

@@ -11,23 +11,31 @@ export const REASON_TEXT = {
   surrender: '相手に動ける駒がいなくなりました',
   tiebreak: '規定手数に到達し、残り戦力で判定しました',
   resign: '投了により決着しました',
-  noGeneral: '本陣を落とせる将官がいなくなりました',
+  noCapturer: '本陣を占領できる駒がいなくなりました',
+  noCapturers: '双方とも本陣を占領できる駒がいなくなりました',
 };
 
 export const MOVE_TEXT = {
   step1: '前後左右に1マス',
   cavalry: '前に2マス、または横・後ろに1マス',
   runner: '縦横にまっすぐ何マスでも（駒は飛び越えられない）',
-  flyer: '縦に何マスでも＋横に1マス。川をまっすぐ飛び越えられる',
+  flyer: '縦に何マスでも＋横に1マス。川と途中の駒を飛び越えられる',
   none: '動けない',
 };
 
 export const ROLE_TEXT = {
-  general: '将官',
-  officer: '士官',
+  general: '占領可能駒',
+  officer: '尉官',
   special: '特殊',
   trap: 'ワナ',
 };
+
+export function roleText(definition) {
+  if (definition.rankOrder <= 3) return '将官';
+  if (definition.rankOrder <= 6) return '佐官';
+  if (definition.rankOrder <= 9) return '尉官';
+  return ROLE_TEXT[definition.role] ?? definition.role;
+}
 
 export function playerNames(opponent) {
   return opponent === 'human'

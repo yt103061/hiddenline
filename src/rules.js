@@ -168,6 +168,7 @@ export function generateMovesForPiece(state, piece, data) {
   const add = (x, y, slide = false, pathFrom = from) => {
     const physicalTo = { x, y };
     if (!inBounds(board, physicalTo)) return false;
+    if (isWater(board, physicalTo)) return false;
     const to = canonicalPosition(board, physicalTo);
     if (to.x === from.x && to.y === from.y) return true;
 
@@ -175,7 +176,7 @@ export function generateMovesForPiece(state, piece, data) {
     if (slide && !isPathClear(state, pathFrom, physicalTo)) return false;
 
     const destinationHq = hqOwnerAt(board, to);
-    if (destinationHq && destinationHq !== piece.owner && definition.role !== 'general') return false;
+    if (destinationHq && destinationHq !== piece.owner && !definition.canCapture) return false;
 
     const occupant = occupantAt(state, to);
     if (occupant?.owner === piece.owner) return false;
@@ -195,7 +196,7 @@ export function generateMovesForPiece(state, piece, data) {
     const occupant = occupantAt(state, to);
     if (occupant?.owner === piece.owner) return;
     const destinationHq = hqOwnerAt(board, to);
-    if (destinationHq && destinationHq !== piece.owner && definition.role !== 'general') return;
+    if (destinationHq && destinationHq !== piece.owner && !definition.canCapture) return;
     const key = cellKey(to);
     if (moveKeys.has(key)) return;
     moveKeys.add(key);
@@ -214,20 +215,40 @@ export function generateMovesForPiece(state, piece, data) {
     }
   }
 
-  if (definition.move === 'runner' || definition.move === 'flyer') {
+  if (definition.move === 'runner') {
     for (const source of sources) {
       for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
         for (let distance = 1; ; distance += 1) {
           const x = source.x + dx * distance;
           const y = source.y + dy * distance;
-          if (definition.move === 'flyer' && dx !== 0 && distance > 1) break;
-          if (definition.move === 'flyer' && isWater(board, { x, y })) {
-            if (!inBounds(board, { x, y })) break;
-            continue;
-          }
           if (!add(x, y, true, source)) break;
         }
       }
+    }
+  }
+
+  if (definition.move === 'flyer') {
+    for (const source of sources) {
+      for (const dy of [1, -1]) {
+        for (let distance = 1; ; distance += 1) {
+          const physicalTo = { x: source.x, y: source.y + dy * distance };
+          if (!inBounds(board, physicalTo)) break;
+          if (isWater(board, physicalTo)) continue;
+
+          const to = canonicalPosition(board, physicalTo);
+          const destinationHq = hqOwnerAt(board, to);
+          if (destinationHq && destinationHq !== piece.owner && !definition.canCapture) continue;
+
+          const occupant = occupantAt(state, to);
+          if (occupant?.owner === piece.owner) continue;
+          const key = cellKey(to);
+          if (moveKeys.has(key)) continue;
+          moveKeys.add(key);
+          moves.push({ pieceId: piece.id, from, to, targetId: occupant?.id ?? null });
+        }
+      }
+      add(source.x + 1, source.y, false, source);
+      add(source.x - 1, source.y, false, source);
     }
   }
 
@@ -285,7 +306,7 @@ export function applyMove(state, move, data, combat) {
 
   const hqOwner = hqOwnerAt(next.board, piece);
   const definition = pieceById(data, piece.type);
-  if (!next.winner && piece.alive && definition?.role === 'general' && hqOwner && hqOwner !== piece.owner) {
+  if (!next.winner && piece.alive && definition?.canCapture && hqOwner && hqOwner !== piece.owner) {
     next.winner = piece.owner;
     next.reason = 'hq';
   }
@@ -304,13 +325,23 @@ function invertResult(result) {
 export function checkVictory(state, data) {
   if (state.winner) return state;
 
+  const capturersByOwner = Object.fromEntries(PLAYERS.map((owner) => [
+    owner,
+    state.pieces.filter((piece) => piece.owner === owner && piece.alive && pieceById(data, piece.type)?.canCapture),
+  ]));
+  if (!capturersByOwner.north.length && !capturersByOwner.south.length) {
+    state.winner = 'draw';
+    state.reason = 'noCapturers';
+    return state;
+  }
+
   for (const owner of PLAYERS) {
     const movablePieces = state.pieces.filter((piece) => piece.owner === owner && piece.alive && pieceById(data, piece.type)?.move !== 'none');
-    const generals = state.pieces.filter((piece) => piece.owner === owner && piece.alive && pieceById(data, piece.type)?.role === 'general');
+    const capturers = capturersByOwner[owner];
 
-    if (!movablePieces.length || !generals.length) {
+    if (!movablePieces.length || !capturers.length) {
       state.winner = owner === 'south' ? 'north' : 'south';
-      state.reason = generals.length ? 'surrender' : 'noGeneral';
+      state.reason = capturers.length ? 'surrender' : 'noCapturer';
       return state;
     }
   }

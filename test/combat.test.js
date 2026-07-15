@@ -6,7 +6,7 @@ import combat from '../data/combat_matrix.json' with { type: 'json' };
 import boards from '../data/boards.json' with { type: 'json' };
 import { buildFormation, chooseFirstTurn, createGame, createGameFromFormations } from '../src/state.js';
 import {
-  applyMove, bridgeEdges, canonicalPosition, generateMovesForPiece, hqCell,
+  applyMove, bridgeEdges, canonicalPosition, checkVictory, generateMovesForPiece, hqCell,
   isHqContinuation, logicalNeighbors, resolveCombat,
 } from '../src/rules.js';
 import { DIFFICULTIES, evaluateMove } from '../src/ai.js';
@@ -59,7 +59,15 @@ for (const [mode, expectedCount] of [['casual', 11], ['classic', 31]]) {
   assert.equal(createGameFromFormations('casual', south, north, 'north').turn, 'north', 'game accepts a randomized opening turn');
 }
 
-assert.equal(piecesData.pieces.find((piece) => piece.id === 'rank_09').count_casual, 2, 'casual adds one rabbit');
+assert.deepEqual(
+  piecesData.pieces.filter((piece) => piece.count_casual > 0).map((piece) => piece.id),
+  ['rank_01', 'rank_02', 'rank_03', 'rank_04', 'rank_05', 'rank_06', 'sp_snake', 'sp_eagle', 'sp_rhino', 'sp_mouse', 'trap'],
+  'casual keeps six headquarters occupiers and five signature special pieces',
+);
+assert.ok(
+  piecesData.pieces.filter((piece) => piece.count_casual > 0 && piece.canCapture).length === 6,
+  'casual includes all six headquarters occupiers',
+);
 assert.equal(piecesData.pieces.find((piece) => piece.id === 'rank_09').count_classic, 5, 'classic adds one rabbit');
 
 assert.deepEqual(
@@ -97,6 +105,17 @@ assert.ok(winningMove, 'general can enter the enemy headquarters');
 const wonAtHq = applyMove(generalState, winningMove, piecesData, combat);
 assert.equal(wonAtHq.winner, 'south', 'surviving general wins on enemy headquarters entry');
 assert.equal(wonAtHq.reason, 'hq');
+
+const noCapturerDraw = checkVictory({
+  mode: 'casual',
+  board: boards.casual,
+  pieces: [
+    { id: 'south-spy', owner: 'south', type: 'sp_snake', x: 0, y: 6, alive: true },
+    { id: 'north-spy', owner: 'north', type: 'sp_snake', x: 0, y: 0, alive: true },
+  ],
+}, piecesData);
+assert.equal(noCapturerDraw.winner, 'draw', 'game is drawn when both sides lose every headquarters occupier');
+assert.equal(noCapturerDraw.reason, 'noCapturers');
 
 const board = { cols: 6, rows: 6, riverRow: 3, bridges: [{ island: 2, banks: [1, 3] }] };
 const movementState = {
@@ -150,11 +169,15 @@ assert.ok(
 const casualFlyerState = {
   board: boards.casual,
   turn: 'south',
-  pieces: [{ id: 'e', owner: 'south', type: 'sp_eagle', x: 1, y: 4, alive: true }],
+  pieces: [
+    { id: 'e', owner: 'south', type: 'sp_eagle', x: 1, y: 6, alive: true },
+    { id: 'friend', owner: 'south', type: 'rank_01', x: 1, y: 4, alive: true },
+    { id: 'enemy', owner: 'north', type: 'rank_06', x: 1, y: 2, alive: true },
+  ],
 };
 assert.ok(
-  generateMovesForPiece(casualFlyerState, casualFlyerState.pieces[0], piecesData).some((move) => move.to.y <= 1),
-  'eagle can fly over the river',
+  generateMovesForPiece(casualFlyerState, casualFlyerState.pieces[0], piecesData).some((move) => move.to.x === 1 && move.to.y === 1),
+  'eagle can fly over friendly pieces, enemy pieces, and the river',
 );
 
 for (const mode of ['casual', 'classic']) {
