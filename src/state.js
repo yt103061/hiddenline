@@ -1,6 +1,6 @@
 import boards from '../data/boards.json' with { type: 'json' };
 import piecesData from '../data/pieces.json' with { type: 'json' };
-import { bridgeEdges, waterRowY, hqOwnerAt } from './rules.js';
+import { bridgeEdges, waterRowY, canonicalPosition, isHqContinuation } from './rules.js';
 
 export function buildFormation(mode = 'casual', preset = 'balanced', owner = 'south') {
   const board = boards[mode];
@@ -31,12 +31,11 @@ export function createGame(mode = 'casual', preset = 'balanced') {
 }
 
 export function formation(pieceList, preset, owner, board) {
-  const sorted = [...pieceList].sort((a, b) => scoreType(a.type, preset) - scoreType(b.type, preset));
+  const sorted = [...pieceList].sort((a, b) => compareForPreset(a.type, b.type, preset));
   const rows = owner === 'south'
     ? [...board.deployRows].reverse()
     : board.deployRows.map((row) => board.rows - 1 - row).sort((a, b) => a - b);
-  const cells = deploymentCells(rows, owner, board, sorted.length)
-    .filter((cell) => hqOwnerAt(board, cell) !== owner);
+  const cells = deploymentCells(rows, owner, board, sorted.length);
   keepStaticPiecesOffBridgeEnds(sorted, cells, board);
 
   return sorted.map((item, index) => ({
@@ -55,36 +54,50 @@ function deploymentCells(rows, owner, board, needed) {
   const expandedRows = [...rows];
   let nextRow = owner === 'south' ? Math.min(...rows) - 1 : Math.max(...rows) + 1;
 
-  while (expandedRows.length * board.cols < needed && nextRow >= 0 && nextRow < board.rows) {
+  while (logicalCellsForRows(expandedRows, board).length < needed && nextRow >= 0 && nextRow < board.rows) {
     expandedRows.push(nextRow);
     nextRow += owner === 'south' ? -1 : 1;
   }
 
-  return expandedRows.flatMap((y) => Array.from({ length: board.cols }, (_, x) => ({ x, y })));
+  return logicalCellsForRows(expandedRows, board);
 }
 
-function scoreType(type, preset) {
-  const base = {
-    trap: 90,
-    rank_01: 10,
-    rank_02: 12,
-    rank_03: 14,
-    rank_04: 20,
-    rank_05: 22,
-    rank_06: 30,
-    rank_07: 40,
-    rank_08: 45,
-    rank_09: 50,
-    sp_snake: 15,
-    sp_eagle: 25,
-    sp_rhino: 28,
-    sp_deer: 32,
-    sp_mouse: 35,
-  }[type] ?? 50;
+function logicalCellsForRows(rows, board) {
+  return rows.flatMap((y) => Array.from({ length: board.cols }, (_, x) => ({ x, y })))
+    .filter((cell) => !isHqContinuation(board, cell))
+    .map((cell) => canonicalPosition(board, cell));
+}
 
-  if (preset === 'attack') return base;
-  if (preset === 'defense') return 100 - base;
-  return Math.abs(base - 50);
+function compareForPreset(typeA, typeB, preset) {
+  if (typeA === 'trap' || typeB === 'trap') {
+    if (typeA === typeB) return 0;
+    return typeA === 'trap' ? -1 : 1;
+  }
+
+  const a = strengthScore(typeA);
+  const b = strengthScore(typeB);
+  if (preset === 'attack') return a - b;
+  if (preset === 'defense') return b - a;
+  return Math.abs(a - 50) - Math.abs(b - 50);
+}
+
+function strengthScore(type) {
+  return {
+    rank_01: 100,
+    rank_02: 94,
+    rank_03: 88,
+    rank_04: 82,
+    rank_05: 76,
+    rank_06: 70,
+    rank_07: 54,
+    rank_08: 48,
+    rank_09: 42,
+    sp_snake: 64,
+    sp_eagle: 68,
+    sp_rhino: 62,
+    sp_deer: 58,
+    sp_mouse: 52,
+  }[type] ?? 50;
 }
 
 export function revealForViewer(state, viewer) {

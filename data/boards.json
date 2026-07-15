@@ -12,10 +12,10 @@
       5,
       6
     ],
-    "hqCols": [
-      1,
-      2
-    ]
+    "hq": {
+      "anchorX": 1,
+      "span": 2
+    }
   },
   "classic": {
     "cols": 8,
@@ -31,10 +31,10 @@
       7,
       8
     ],
-    "hqCols": [
-      3,
-      4
-    ]
+    "hq": {
+      "anchorX": 3,
+      "span": 2
+    }
   },
   "turnTimeSec": 15,
   "clockSec": 90,

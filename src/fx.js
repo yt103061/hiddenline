@@ -1,5 +1,5 @@
 import { pieceById } from './rules.js';
-import { pieceEmoji, pieceName, opponentOf } from './text.js';
+import { pieceName, opponentOf } from './text.js';
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -86,5 +86,5 @@ function cutInResult(event, data) {
 
 function cutInBadge(data, typeId, owner) {
   const def = pieceById(data, typeId);
-  return `<div class="token cutin-token ${owner}"><span class="token-face">${pieceEmoji(def)}</span></div>`;
+  return `<div class="token cutin-token ${owner}"><img class="token-face" src="${def.asset}" alt="" /></div>`;
 }

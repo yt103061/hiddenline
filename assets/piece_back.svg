@@ -1,1 +1,2 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#173d2f"/><circle cx="256" cy="256" r="178" fill="#f4a261"/><text x="256" y="306" text-anchor="middle" font-size="190">🍂</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="伏せ駒"><path fill="#e1b765" d="M256 47l52 96 108 20-75 80 14 111-99-48-99 48 14-111-75-80 108-20z"/><path d="M256 116v221m-81-121l81 55 81-55" fill="none" stroke="#173d2f" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/><circle cx="256" cy="256" r="190" fill="none" stroke="#173d2f" stroke-width="18"/>
+</svg>

@@ -13,6 +13,36 @@ export function inBounds(board, pos) {
   return pos.x >= 0 && pos.y >= 0 && pos.x < board.cols && pos.y < board.rows;
 }
 
+export function hqCell(board, owner) {
+  if (!board.hq) return null;
+  return {
+    x: board.hq.anchorX,
+    y: owner === 'south' ? board.rows - 1 : 0,
+    span: board.hq.span || 1,
+  };
+}
+
+export function hqFootprint(board, owner) {
+  const hq = hqCell(board, owner);
+  if (!hq) return [];
+  return Array.from({ length: hq.span }, (_, offset) => ({ x: hq.x + offset, y: hq.y }));
+}
+
+export function canonicalPosition(board, pos) {
+  for (const owner of PLAYERS) {
+    const hq = hqCell(board, owner);
+    if (hq && pos.y === hq.y && pos.x >= hq.x && pos.x < hq.x + hq.span) {
+      return { x: hq.x, y: hq.y };
+    }
+  }
+  return { x: pos.x, y: pos.y };
+}
+
+export function isHqContinuation(board, pos) {
+  const canonical = canonicalPosition(board, pos);
+  return canonical.x !== pos.x || canonical.y !== pos.y;
+}
+
 export function waterRowY(board) {
   return board.riverRow - 1;
 }
@@ -57,10 +87,30 @@ export function bridgeNeighbors(board, pos) {
 }
 
 export function hqOwnerAt(board, pos) {
-  if (!(board.hqCols ?? []).includes(pos.x)) return null;
-  if (pos.y === board.rows - 1) return 'south';
-  if (pos.y === 0) return 'north';
+  for (const owner of PLAYERS) {
+    const hq = hqCell(board, owner);
+    if (hq && pos.y === hq.y && pos.x >= hq.x && pos.x < hq.x + hq.span) return owner;
+  }
   return null;
+}
+
+export function logicalNeighbors(board, pos) {
+  const canonical = canonicalPosition(board, pos);
+  const owner = hqOwnerAt(board, canonical);
+  const sources = owner ? hqFootprint(board, owner) : [canonical];
+  const neighbors = new Map();
+
+  for (const source of sources) {
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const physical = { x: source.x + dx, y: source.y + dy };
+      if (!inBounds(board, physical)) continue;
+      const target = canonicalPosition(board, physical);
+      if (target.x === canonical.x && target.y === canonical.y) continue;
+      neighbors.set(cellKey(target), target);
+    }
+  }
+
+  return [...neighbors.values()];
 }
 
 function spansWaterRow(board, from, to) {
@@ -79,7 +129,11 @@ export function canEnter(board, from, to, moveType) {
 }
 
 export function occupantAt(state, pos) {
-  return state.pieces.find((piece) => piece.alive && piece.x === pos.x && piece.y === pos.y);
+  const target = canonicalPosition(state.board, pos);
+  return state.pieces.find((piece) => {
+    const piecePos = canonicalPosition(state.board, piece);
+    return piece.alive && piecePos.x === target.x && piecePos.y === target.y;
+  });
 }
 
 export function isPathClear(state, from, to) {
@@ -106,16 +160,29 @@ export function generateMovesForPiece(state, piece, data) {
   const board = state.board;
   const forward = piece.owner === 'south' ? -1 : 1;
   const moves = [];
+  const moveKeys = new Set();
+  const from = canonicalPosition(board, piece);
+  const fromHqOwner = hqOwnerAt(board, from);
+  const sources = fromHqOwner ? hqFootprint(board, fromHqOwner) : [from];
 
-  const add = (x, y, slide = false) => {
-    const from = { x: piece.x, y: piece.y };
-    const to = { x, y };
+  const add = (x, y, slide = false, pathFrom = from) => {
+    const physicalTo = { x, y };
+    if (!inBounds(board, physicalTo)) return false;
+    const to = canonicalPosition(board, physicalTo);
+    if (to.x === from.x && to.y === from.y) return true;
 
-    if (!inBounds(board, to) || !canEnter(board, from, to, definition.move)) return false;
-    if (slide && !isPathClear(state, from, to)) return false;
+    if (!canEnter(board, pathFrom, physicalTo, definition.move)) return false;
+    if (slide && !isPathClear(state, pathFrom, physicalTo)) return false;
+
+    const destinationHq = hqOwnerAt(board, to);
+    if (destinationHq && destinationHq !== piece.owner && definition.role !== 'general') return false;
 
     const occupant = occupantAt(state, to);
     if (occupant?.owner === piece.owner) return false;
+
+    const key = cellKey(to);
+    if (moveKeys.has(key)) return !occupant;
+    moveKeys.add(key);
 
     moves.push({ pieceId: piece.id, from, to, targetId: occupant?.id ?? null });
     return !occupant;
@@ -127,34 +194,45 @@ export function generateMovesForPiece(state, piece, data) {
     if (moves.some((move) => move.to.x === x && move.to.y === y)) return;
     const occupant = occupantAt(state, to);
     if (occupant?.owner === piece.owner) return;
-    moves.push({ pieceId: piece.id, from: { x: piece.x, y: piece.y }, to, targetId: occupant?.id ?? null, via: 'bridge' });
+    const destinationHq = hqOwnerAt(board, to);
+    if (destinationHq && destinationHq !== piece.owner && definition.role !== 'general') return;
+    const key = cellKey(to);
+    if (moveKeys.has(key)) return;
+    moveKeys.add(key);
+    moves.push({ pieceId: piece.id, from, to, targetId: occupant?.id ?? null, via: 'bridge' });
   };
 
   if (definition.move === 'step1') {
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) add(piece.x + dx, piece.y + dy);
+    for (const target of logicalNeighbors(board, from)) add(target.x, target.y);
   }
 
   if (definition.move === 'cavalry') {
-    for (const [dx, dy] of [[0, 2 * forward], [0, -forward], [1, 0], [-1, 0]]) add(piece.x + dx, piece.y + dy);
-  }
-
-  if (definition.move === 'runner' || definition.move === 'flyer') {
-    for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
-      for (let distance = 1; ; distance += 1) {
-        const x = piece.x + dx * distance;
-        const y = piece.y + dy * distance;
-        if (definition.move === 'flyer' && dx !== 0 && distance > 1) break;
-        if (definition.move === 'flyer' && isWater(board, { x, y })) {
-          if (!inBounds(board, { x, y })) break;
-          continue;
-        }
-        if (!add(x, y, true)) break;
+    for (const source of sources) {
+      for (const [dx, dy] of [[0, 2 * forward], [0, -forward], [1, 0], [-1, 0]]) {
+        add(source.x + dx, source.y + dy, false, source);
       }
     }
   }
 
-  for (const neighbor of bridgeNeighbors(board, { x: piece.x, y: piece.y })) {
-    addBridge(neighbor.x, neighbor.y);
+  if (definition.move === 'runner' || definition.move === 'flyer') {
+    for (const source of sources) {
+      for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+        for (let distance = 1; ; distance += 1) {
+          const x = source.x + dx * distance;
+          const y = source.y + dy * distance;
+          if (definition.move === 'flyer' && dx !== 0 && distance > 1) break;
+          if (definition.move === 'flyer' && isWater(board, { x, y })) {
+            if (!inBounds(board, { x, y })) break;
+            continue;
+          }
+          if (!add(x, y, true, source)) break;
+        }
+      }
+    }
+  }
+
+  for (const source of sources) {
+    for (const neighbor of bridgeNeighbors(board, source)) addBridge(neighbor.x, neighbor.y);
   }
 
   return moves;
@@ -179,14 +257,15 @@ export function resolveCombat(combat, attackerType, defenderType) {
 export function applyMove(state, move, data, combat) {
   const next = structuredClone(state);
   const piece = next.pieces.find((candidate) => candidate.id === move.pieceId);
-  const target = occupantAt(next, move.to);
+  const destination = canonicalPosition(next.board, move.to);
+  const target = occupantAt(next, destination);
 
   next.log ||= [];
   if (!piece || !piece.alive) throw new Error('Invalid move');
 
   if (!target) {
-    piece.x = move.to.x;
-    piece.y = move.to.y;
+    piece.x = destination.x;
+    piece.y = destination.y;
   } else {
     const combatResult = resolveCombat(combat, piece.type, target.type);
     const event = { attacker: piece.type, defender: target.type, result: combatResult.result, attackerOwner: piece.owner };
@@ -199,15 +278,16 @@ export function applyMove(state, move, data, combat) {
 
     if (combatResult.attackerRemoved) piece.alive = false;
     else {
-      piece.x = move.to.x;
-      piece.y = move.to.y;
+      piece.x = destination.x;
+      piece.y = destination.y;
     }
 
     if (combatResult.defenderRemoved) target.alive = false;
   }
 
-  const hqOwner = hqOwnerAt(next.board, { x: piece.x, y: piece.y });
-  if (!next.winner && piece.alive && hqOwner && hqOwner !== piece.owner) {
+  const hqOwner = hqOwnerAt(next.board, piece);
+  const definition = pieceById(data, piece.type);
+  if (!next.winner && piece.alive && definition?.role === 'general' && hqOwner && hqOwner !== piece.owner) {
     next.winner = piece.owner;
     next.reason = 'hq';
   }
@@ -228,10 +308,11 @@ export function checkVictory(state, data) {
 
   for (const owner of PLAYERS) {
     const movablePieces = state.pieces.filter((piece) => piece.owner === owner && piece.alive && pieceById(data, piece.type)?.move !== 'none');
+    const generals = state.pieces.filter((piece) => piece.owner === owner && piece.alive && pieceById(data, piece.type)?.role === 'general');
 
-    if (!movablePieces.length) {
+    if (!movablePieces.length || !generals.length) {
       state.winner = owner === 'south' ? 'north' : 'south';
-      state.reason = 'surrender';
+      state.reason = generals.length ? 'surrender' : 'noGeneral';
       return state;
     }
   }

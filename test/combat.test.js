@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import battlepass from '../data/battlepass.json' with { type: 'json' };
 import piecesData from '../data/pieces.json' with { type: 'json' };
 import combat from '../data/combat_matrix.json' with { type: 'json' };
 import boards from '../data/boards.json' with { type: 'json' };
-import { createGame } from '../src/state.js';
-import { applyMove, bridgeEdges, generateMovesForPiece, resolveCombat } from '../src/rules.js';
+import { buildFormation, createGame } from '../src/state.js';
+import {
+  applyMove, bridgeEdges, canonicalPosition, generateMovesForPiece, hqCell,
+  isHqContinuation, logicalNeighbors, resolveCombat,
+} from '../src/rules.js';
+import { DIFFICULTIES, evaluateMove } from '../src/ai.js';
+import { PROTOCOL_VERSION } from '../src/online.js';
 
 const attackers = Object.keys(combat.matrix);
 const defenders = piecesData.pieces.map((piece) => piece.id);
@@ -29,8 +35,58 @@ for (const attacker of attackers.filter((id) => !['sp_eagle', 'sp_mouse'].includ
 assert.equal(resolveCombat(combat, 'sp_eagle', 'trap').result, 'WIN');
 assert.equal(resolveCombat(combat, 'sp_mouse', 'trap').result, 'WIN');
 assert.equal(battlepass.rewardTable.length, 50, 'battle pass has all 50 levels');
-assert.equal(createGame('casual').pieces.filter((piece) => piece.owner === 'south').length, 10, 'casual has 10 pieces per side');
-assert.equal(createGame('classic').pieces.filter((piece) => piece.owner === 'south').length, 30, 'classic has 30 pieces per side');
+assert.equal(PROTOCOL_VERSION, 2, 'online protocol is versioned for composite headquarters coordinates');
+
+for (const [mode, expectedCount] of [['casual', 11], ['classic', 31]]) {
+  const game = createGame(mode);
+  const board = boards[mode];
+  const south = game.pieces.filter((piece) => piece.owner === 'south');
+  const southHq = hqCell(board, 'south');
+  assert.equal(south.length, expectedCount, `${mode} has ${expectedCount} pieces per side`);
+  assert.equal(new Set(south.map((piece) => `${piece.x},${piece.y}`)).size, expectedCount, `${mode} formation has no overlap`);
+  assert.equal(south.filter((piece) => piece.x === southHq.x && piece.y === southHq.y).length, 1, `${mode} headquarters holds one piece`);
+  assert.ok(south.every((piece) => !isHqContinuation(board, piece)), `${mode} never stores a piece on the headquarters continuation`);
+  assert.equal(canonicalPosition(board, { x: southHq.x + 1, y: southHq.y }).x, southHq.x, `${mode} headquarters continuation canonicalizes to anchor`);
+}
+
+assert.equal(piecesData.pieces.find((piece) => piece.id === 'rank_09').count_casual, 2, 'casual adds one rabbit');
+assert.equal(piecesData.pieces.find((piece) => piece.id === 'rank_09').count_classic, 5, 'classic adds one rabbit');
+
+assert.deepEqual(
+  new Set(logicalNeighbors(boards.casual, { x: 1, y: 6 }).map((pos) => `${pos.x},${pos.y}`)),
+  new Set(['0,6', '3,6', '1,5', '2,5']),
+  'casual south headquarters has four perimeter neighbors',
+);
+
+const hqEntryBase = {
+  mode: 'casual',
+  board: boards.casual,
+  turn: 'south',
+  moveCount: 0,
+  maxMoves: 120,
+  strength: boards.strengthPointsForTiebreak,
+};
+const officerState = {
+  ...hqEntryBase,
+  pieces: [
+    { id: 'officer', owner: 'south', type: 'rank_07', x: 1, y: 1, alive: true },
+    { id: 'north-general', owner: 'north', type: 'rank_01', x: 0, y: 1, alive: true },
+    { id: 'south-general', owner: 'south', type: 'rank_01', x: 3, y: 6, alive: true },
+  ],
+};
+assert.ok(
+  !generateMovesForPiece(officerState, officerState.pieces[0], piecesData).some((move) => move.to.x === 1 && move.to.y === 0),
+  'non-general cannot enter the enemy headquarters',
+);
+
+const generalState = structuredClone(officerState);
+generalState.pieces[0].type = 'rank_01';
+const winningMove = generateMovesForPiece(generalState, generalState.pieces[0], piecesData)
+  .find((move) => move.to.x === 1 && move.to.y === 0);
+assert.ok(winningMove, 'general can enter the enemy headquarters');
+const wonAtHq = applyMove(generalState, winningMove, piecesData, combat);
+assert.equal(wonAtHq.winner, 'south', 'surviving general wins on enemy headquarters entry');
+assert.equal(wonAtHq.reason, 'hq');
 
 const board = { cols: 6, rows: 6, riverRow: 3, bridges: [{ island: 2, banks: [1, 3] }] };
 const movementState = {
@@ -64,14 +120,10 @@ const afterTrap = applyMove(trapState, { pieceId: 'lion', from: { x: 0, y: 1 }, 
 assert.equal(afterTrap.pieces.find((piece) => piece.id === 'lion').alive, false, 'attacker dies to trap');
 assert.equal(afterTrap.pieces.find((piece) => piece.id === 'trap').alive, false, 'trap self-removes after successful defense');
 
-// Verify bridge movement with actual game boards
-const casualBoard = boards.casual;
 const casualBridgeState = {
-  board: casualBoard,
+  board: boards.casual,
   turn: 'south',
-  pieces: [
-    { id: 'w', owner: 'south', type: 'rank_04', x: 0, y: 4, alive: true },
-  ],
+  pieces: [{ id: 'w', owner: 'south', type: 'rank_04', x: 0, y: 4, alive: true }],
 };
 assert.ok(
   generateMovesForPiece(casualBridgeState, casualBridgeState.pieces[0], piecesData).some((move) => move.to.x === 1 && move.to.y === 3),
@@ -79,11 +131,9 @@ assert.ok(
 );
 
 const casualFlyerState = {
-  board: casualBoard,
+  board: boards.casual,
   turn: 'south',
-  pieces: [
-    { id: 'e', owner: 'south', type: 'sp_eagle', x: 1, y: 4, alive: true },
-  ],
+  pieces: [{ id: 'e', owner: 'south', type: 'sp_eagle', x: 1, y: 4, alive: true }],
 };
 assert.ok(
   generateMovesForPiece(casualFlyerState, casualFlyerState.pieces[0], piecesData).some((move) => move.to.y <= 1),
@@ -97,12 +147,43 @@ for (const mode of ['casual', 'classic']) {
   for (const preset of ['balanced', 'attack', 'defense']) {
     const game = createGame(mode, preset);
     for (const piece of game.pieces) {
-      if (piece.type === 'trap') {
-        assert.ok(!bridgeCells.has(`${piece.x},${piece.y}`), `${mode}/${preset}: ${piece.type} must not start on a bridge position`);
-      }
+      if (piece.type === 'trap') assert.ok(!bridgeCells.has(`${piece.x},${piece.y}`), `${mode}/${preset}: trap stays off bridge positions`);
       assert.notEqual(piece.y, waterY, `${mode}/${preset}: no piece starts on the water row`);
     }
   }
+
+  const attack = buildFormation(mode, 'attack', 'south').filter((piece) => piece.type.startsWith('rank_0') && Number(piece.type.slice(-2)) <= 6);
+  const defense = buildFormation(mode, 'defense', 'south').filter((piece) => piece.type.startsWith('rank_0') && Number(piece.type.slice(-2)) <= 6);
+  const averageY = (formation) => formation.reduce((sum, piece) => sum + piece.y, 0) / formation.length;
+  assert.ok(averageY(attack) < averageY(defense), `${mode}: attack puts generals farther forward than defense`);
 }
 
-console.log('combat matrix, data integrity, and core movement tests passed');
+const hiddenMove = { pieceId: 'ai', from: { x: 0, y: 1 }, to: { x: 0, y: 2 }, targetId: 'hidden' };
+const hiddenState = (hiddenType) => ({
+  mode: 'casual',
+  board: boards.casual,
+  turn: 'north',
+  pieces: [
+    { id: 'ai', owner: 'north', type: 'rank_04', x: 0, y: 1, alive: true, revealed: false },
+    { id: 'hidden', owner: 'south', type: hiddenType, x: 0, y: 2, alive: true, revealed: false },
+  ],
+});
+const safeLionScore = evaluateMove(hiddenState('rank_01'), hiddenMove, piecesData, combat, DIFFICULTIES.intermediate);
+const safeRabbitScore = evaluateMove(hiddenState('rank_09'), hiddenMove, piecesData, combat, DIFFICULTIES.intermediate);
+assert.equal(safeLionScore, safeRabbitScore, 'normal AI does not peek at a hidden target type');
+assert.notEqual(
+  evaluateMove(hiddenState('rank_01'), hiddenMove, piecesData, combat, DIFFICULTIES.oni),
+  evaluateMove(hiddenState('rank_09'), hiddenMove, piecesData, combat, DIFFICULTIES.oni),
+  'oni difficulty deliberately uses the disclosed full-information handicap',
+);
+
+for (const definition of piecesData.pieces) {
+  assert.ok(definition.asset, `${definition.id} declares an asset`);
+  const svg = await readFile(new URL(`../${definition.asset}`, import.meta.url), 'utf8');
+  assert.match(svg, /<svg\b/);
+  assert.doesNotMatch(svg, /<text\b|[\u{1F300}-\u{1FAFF}]/u, `${definition.asset} is path-based and contains no emoji text`);
+}
+const backSvg = await readFile(new URL(`../${piecesData.backAsset}`, import.meta.url), 'utf8');
+assert.doesNotMatch(backSvg, /<text\b|[\u{1F300}-\u{1FAFF}]/u, 'piece back is path-based and contains no emoji text');
+
+console.log('rules, composite headquarters, fair AI, assets, and data integrity tests passed');

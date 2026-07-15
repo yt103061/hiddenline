@@ -1,19 +1,29 @@
-import { pieceById, isWater, isIsland, bridgeEdges, hqOwnerAt } from './rules.js';
-import { pieceEmoji, BACK_EMOJI, cellTitle, hqTitle, logLine, moveCountText } from './text.js';
+import {
+  pieceById, isWater, isIsland, bridgeEdges, hqOwnerAt, hqCell, isHqContinuation,
+} from './rules.js';
+import { cellTitle, hqTitle, logLine, moveCountText } from './text.js';
 
 export function renderBoard(boardEl, state, data, ui, handlers = {}) {
   boardEl.innerHTML = '';
   boardEl.style.setProperty('--cols', state.board.cols);
   boardEl.style.setProperty('--rows', state.board.rows);
   boardEl.classList.toggle('flipped', ui.viewer === 'north');
+  boardEl.setAttribute('role', 'grid');
+  boardEl.setAttribute('aria-label', ui.boardLabel || '対局盤');
 
   const ys = range(state.board.rows, ui.viewer === 'north');
   const xs = range(state.board.cols, ui.viewer === 'north');
   for (const y of ys) {
     for (const x of xs) {
+      if (isHqContinuation(state.board, { x, y })) continue;
       boardEl.append(createCell(state, data, x, y, ui, handlers));
     }
   }
+
+
+  const focusTarget = boardEl.querySelector(`[data-pid="${ui.selected || ''}"]`)
+    || boardEl.querySelector('.cell:not(.water)');
+  if (focusTarget) focusTarget.tabIndex = 0;
 }
 
 function range(count, reversed) {
@@ -32,12 +42,17 @@ function createCell(state, data, x, y, ui, handlers) {
   cell.className = `cell ${water ? 'water' : ''} ${island ? 'island' : ''}`.trim();
   cell.dataset.x = x;
   cell.dataset.y = y;
-  if (water) cell.tabIndex = -1;
+  cell.tabIndex = -1;
+  cell.setAttribute('role', 'gridcell');
+  if (water) cell.disabled = true;
 
   const hqOwner = hqOwnerAt(state.board, pos);
   if (hqOwner) {
     cell.classList.add('hq', hqOwner);
     cell.title = hqTitle(hqOwner, ui.names);
+    const hq = hqCell(state.board, hqOwner);
+    cell.style.gridColumn = `span ${hq.span}`;
+    cell.dataset.span = hq.span;
   }
 
   if (ui.lastMove) {
@@ -54,39 +69,124 @@ function createCell(state, data, x, y, ui, handlers) {
     cell.title = cellTitle(piece, def, ui.viewer, ui.names);
 
     if (hidden) {
-      cell.append(tokenEl(piece.owner, BACK_EMOJI, 'back'));
+      cell.append(tokenEl(piece.owner, data.backAsset, '伏せ駒', 'back'));
     } else {
-      cell.append(tokenEl(piece.owner, pieceEmoji(def)));
+      cell.append(tokenEl(piece.owner, def.asset, def.name));
     }
   }
+
+
+  const label = accessibleCellLabel(state, data, pos, piece, ui, hqOwner);
+  cell.dataset.baseLabel = label;
+  cell.setAttribute('aria-label', label);
+  cell.setAttribute('aria-selected', 'false');
+  if (water) cell.setAttribute('aria-disabled', 'true');
 
   cell.onclick = () => handlers.onCell?.(x, y, piece);
   cell.oncontextmenu = (event) => {
     event.preventDefault();
     handlers.onInspect?.(piece);
   };
+  cell.onkeydown = (event) => {
+    if (event.key.startsWith('Arrow')) {
+      event.preventDefault();
+      focusByDirection(boardElFor(cell), cell, event.key);
+    } else if (event.key.toLowerCase() === 'i') {
+      event.preventDefault();
+      handlers.onInspect?.(piece);
+    }
+  };
 
   return cell;
 }
 
-function tokenEl(owner, emoji, extraClass = '') {
+export function tokenEl(owner, asset, label, extraClass = '') {
   const token = document.createElement('div');
   token.className = `token ${owner} ${extraClass}`.trim();
-  token.innerHTML = `<span class="token-face">${emoji}</span>`;
+  const image = document.createElement('img');
+  image.className = 'token-face';
+  image.src = asset;
+  image.alt = '';
+  image.draggable = false;
+  const fallback = document.createElement('span');
+  fallback.className = 'token-fallback';
+  fallback.textContent = label.slice(0, 1);
+  image.onerror = () => token.classList.add('asset-error');
+  token.append(image, fallback);
   return token;
+}
+
+function boardElFor(cell) {
+  return cell.closest('.board');
+}
+
+function focusByDirection(boardEl, current, key) {
+  if (!boardEl) return;
+  const currentRect = current.getBoundingClientRect();
+  const from = { x: currentRect.left + currentRect.width / 2, y: currentRect.top + currentRect.height / 2 };
+  const candidates = [...boardEl.querySelectorAll('.cell:not(.water)')]
+    .filter((cell) => cell !== current)
+    .map((cell) => {
+      const rect = cell.getBoundingClientRect();
+      const dx = rect.left + rect.width / 2 - from.x;
+      const dy = rect.top + rect.height / 2 - from.y;
+      return { cell, dx, dy };
+    })
+    .filter(({ dx, dy }) => (
+      (key === 'ArrowRight' && dx > 1)
+      || (key === 'ArrowLeft' && dx < -1)
+      || (key === 'ArrowDown' && dy > 1)
+      || (key === 'ArrowUp' && dy < -1)
+    ))
+    .sort((a, b) => {
+      const vertical = key === 'ArrowUp' || key === 'ArrowDown';
+      const aScore = (vertical ? Math.abs(a.dy) : Math.abs(a.dx)) + (vertical ? Math.abs(a.dx) : Math.abs(a.dy)) * 3;
+      const bScore = (vertical ? Math.abs(b.dy) : Math.abs(b.dx)) + (vertical ? Math.abs(b.dx) : Math.abs(b.dy)) * 3;
+      return aScore - bScore;
+    });
+  const next = candidates[0]?.cell;
+  if (!next) return;
+  for (const cell of boardEl.querySelectorAll('.cell')) cell.tabIndex = -1;
+  next.tabIndex = 0;
+  next.focus();
+}
+
+function coordinateLabel(board, pos, hqOwner) {
+  const start = String.fromCharCode(97 + pos.x);
+  const row = pos.y + 1;
+  if (!hqOwner) return `${start}${row}`;
+  const hq = hqCell(board, hqOwner);
+  const end = String.fromCharCode(97 + pos.x + hq.span - 1);
+  return `${start}${row}から${end}${row}`;
+}
+
+function accessibleCellLabel(state, data, pos, piece, ui, hqOwner) {
+  const parts = [coordinateLabel(state.board, pos, hqOwner)];
+  if (hqOwner) parts.push(hqTitle(hqOwner, ui.names));
+  if (piece) parts.push(cellTitle(piece, pieceById(data, piece.type), ui.viewer, ui.names));
+  else if (!isWater(state.board, pos)) parts.push('空きマス');
+  return parts.join('、');
 }
 
 export function updateSelection(boardEl, ui) {
   for (const cell of boardEl.querySelectorAll('.sel, .move-dot, .attack-target')) {
     cell.classList.remove('sel', 'move-dot', 'attack-target');
   }
+  for (const cell of boardEl.querySelectorAll('.cell')) {
+    cell.setAttribute('aria-selected', 'false');
+    if (cell.dataset.baseLabel) cell.setAttribute('aria-label', cell.dataset.baseLabel);
+  }
 
   if (!ui.selected) return;
 
-  boardEl.querySelector(`[data-pid="${ui.selected}"]`)?.classList.add('sel');
+  const selectedCell = boardEl.querySelector(`[data-pid="${ui.selected}"]`);
+  selectedCell?.classList.add('sel');
+  selectedCell?.setAttribute('aria-selected', 'true');
+  if (selectedCell) selectedCell.setAttribute('aria-label', `${selectedCell.dataset.baseLabel}、選択中`);
   for (const move of ui.selectedMoves) {
     const cell = boardEl.querySelector(`[data-x="${move.to.x}"][data-y="${move.to.y}"]`);
     cell?.classList.add(move.targetId ? 'attack-target' : 'move-dot');
+    if (cell) cell.setAttribute('aria-label', `${cell.dataset.baseLabel}、${move.targetId ? '攻撃可能' : '移動可能'}`);
   }
 }
 
@@ -121,42 +221,6 @@ export function renderOverlay(svgEl, board, viewer) {
     .join('');
 
   svgEl.innerHTML = bridges;
-  renderHqLayer(svgEl, board, viewer);
-}
-
-function renderHqLayer(svgEl, board, viewer) {
-  const parent = svgEl.parentElement;
-  if (!parent) return;
-
-  let hqLayer = parent.querySelector(':scope > .hq-layer');
-  if (!hqLayer) {
-    hqLayer = document.createElement('div');
-    hqLayer.className = 'hq-layer';
-    hqLayer.setAttribute('aria-hidden', 'true');
-    parent.appendChild(hqLayer);
-  }
-
-  const hqCols = board.hqCols ?? [];
-  if (!hqCols.length) {
-    hqLayer.innerHTML = '';
-    return;
-  }
-
-  const flip = viewer === 'north';
-  const colOf = (x) => (flip ? board.cols - 1 - x : x);
-
-  hqLayer.innerHTML = ['south', 'north'].map((owner) => {
-    const y = owner === 'south' ? board.rows - 1 : 0;
-    const row = flip ? board.rows - 1 - y : y;
-    const cols = hqCols.map(colOf).sort((a, b) => a - b);
-    const left = (cols[0] / board.cols) * 100;
-    const width = ((cols[cols.length - 1] + 1 - cols[0]) / board.cols) * 100;
-    const top = (row / board.rows) * 100;
-    const height = (1 / board.rows) * 100;
-    return `<div class="hq-marker ${owner}" style="left:${left}%; top:${top}%; width:${width}%; height:${height}%">
-      <span class="hq-marker-icon">🪺</span>
-    </div>`;
-  }).join('');
 }
 
 export function renderHud(el, state, data, ui) {
@@ -172,12 +236,11 @@ export function renderHud(el, state, data, ui) {
       <span class="hud-turn-dot" aria-hidden="true"></span>
       <span class="hud-name">${ui.names[owner]}</span>
       <div class="hud-captured" aria-label="取られた駒">
-        ${dead.map((piece) => `<span class="mini-token ${owner}">${pieceEmoji(pieceById(data, piece.type))}</span>`).join('')
+        ${dead.map((piece) => {
+          const def = pieceById(data, piece.type);
+          return `<span class="mini-token ${owner}" title="${def.name}"><img src="${def.asset}" alt="" /></span>`;
+        }).join('')
           || '<span class="hud-none">まだ取られていません</span>'}
       </div>`;
   }
-}
-
-export function message(text) {
-  document.querySelector('#status').textContent = text;
 }

@@ -1,4 +1,4 @@
-import { pieceEmoji, MOVE_TEXT, ROLE_TEXT } from './text.js';
+import { MOVE_TEXT, ROLE_TEXT } from './text.js';
 
 const MOVE_DOTS = {
   step1: [[0, -1], [0, 1], [-1, 0], [1, 0]],
@@ -24,42 +24,42 @@ function buildGuide(data) {
   return `
     <h2>あそびかた</h2>
     <section class="guide-section">
-      <h3>🎯 ゲームの目的</h3>
+      <h3>ゲームの目的</h3>
       <ul>
         <li>相手の駒は裏向きで、正体は分かりません。戦闘すると正体が判明します。</li>
-        <li>将官の駒で相手の<strong>巣 🪹</strong>に入れば勝ちです。</li>
-        <li>相手に「動ける駒」や「巣を落とせる駒」がいなくなっても勝ちです。</li>
+        <li>将官の駒で相手の<strong>本陣（巣）</strong>に入れば勝ちです。</li>
+        <li>相手に動ける駒、または本陣を落とせる将官がいなくなっても勝ちです。</li>
       </ul>
     </section>
     <section class="guide-section">
-      <h3>🌊 川と突入口</h3>
+      <h3>川と突入口</h3>
       <ul>
         <li>盤の中央には<strong>川</strong>が流れていて、そのままでは渡れません。</li>
         <li>左右2か所に<strong>中州（飛び石）</strong>があります。岸のマスから中州へ、中州から対岸の岸へ、ななめに1マスずつ進むことで渡れます。</li>
         <li>どの動物も、この突入口を使えば川を渡れます。</li>
-        <li>ワシ🦅だけは突入口を使わず、川をまっすぐ飛び越えられます。</li>
+        <li>ワシだけは突入口を使わず、川をまっすぐ飛び越えられます。</li>
       </ul>
     </section>
     <section class="guide-section">
-      <h3>💪 強さの要点</h3>
+      <h3>強さの要点</h3>
       <ul>
         <li>将官（ライオン〜イノシシ）は番号が小さいほど強く、格下に勝ちます。同じ駒同士は相打ちです。</li>
-        <li><strong>ヘビ 🐍 はライオン 🦁 にだけ勝てます。</strong>ほかの相手には負けます。</li>
-        <li><strong>ハチの巣 🐝</strong> は動けませんが、触れた駒を返り討ちにします（自分も壊れます）。</li>
-        <li><strong>ワシ 🦅 とネズミ 🐭</strong> だけがハチの巣を無傷で取り除けます。</li>
-        <li>巣 🪹 に入れるのは将官の駒だけです。</li>
+        <li><strong>ヘビはライオンにだけ勝てます。</strong>ほかの相手には負けます。</li>
+        <li><strong>ハチの巣（罠）</strong>は動けませんが、触れた駒を返り討ちにします（自分も壊れます）。</li>
+        <li><strong>ワシとネズミ</strong>だけがハチの巣（罠）を無傷で取り除けます。</li>
+        <li>本陣（巣）に入れるのは将官の駒だけです。</li>
       </ul>
     </section>
     <section class="guide-section">
-      <h3>📖 駒ずかん</h3>
-      <p class="guide-note">移動図は自分視点（上が前）です。🌱はカジュアルにも登場する駒。</p>
+      <h3>駒ずかん</h3>
+      <p class="guide-note">移動図は自分視点（上が前）です。「カジュアル」はカジュアルモードにも登場する駒です。</p>
       <div class="guide-pieces">${data.pieces.map((def) => pieceCard(def, data)).join('')}</div>
     </section>`;
 }
 
 function pieceCard(def, data) {
-  const badge = `<div class="token guide-badge"><span class="token-face">${pieceEmoji(def)}</span></div>`;
-  const casual = data.casualPieceSet.includes(def.id) ? '<span class="guide-casual">🌱</span>' : '';
+  const badge = `<div class="token guide-badge"><img class="token-face" src="${def.asset}" alt="" /></div>`;
+  const casual = data.casualPieceSet.includes(def.id) ? '<span class="guide-casual">カジュアル</span>' : '';
   const rank = def.role === 'general' ? `<span class="guide-rank">強さ${def.rankOrder}</span>` : '';
 
   return `

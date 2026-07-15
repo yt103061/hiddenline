@@ -1,25 +1,5 @@
 import { pieceById } from './rules.js';
 
-export const PIECE_EMOJI = {
-  rank_01: '🦁',
-  rank_02: '🐯',
-  rank_03: '🐻',
-  rank_04: '🐺',
-  rank_05: '🐆',
-  rank_06: '🐗',
-  rank_07: '🦊',
-  rank_08: '🦝',
-  rank_09: '🐰',
-  sp_deer: '🦌',
-  sp_snake: '🐍',
-  sp_eagle: '🦅',
-  sp_rhino: '🦏',
-  sp_mouse: '🐭',
-  trap: '🐝',
-};
-
-export const BACK_EMOJI = '🍂';
-
 export const RESULT_TEXT = {
   WIN: '勝ち',
   LOSE: '負け',
@@ -31,6 +11,7 @@ export const REASON_TEXT = {
   surrender: '相手に動ける駒がいなくなりました',
   tiebreak: '規定手数に到達し、残り戦力で判定しました',
   resign: '投了により決着しました',
+  noGeneral: '本陣を落とせる将官がいなくなりました',
 };
 
 export const MOVE_TEXT = {
@@ -58,10 +39,6 @@ export function pieceName(data, typeId) {
   return pieceById(data, typeId)?.name ?? typeId;
 }
 
-export function pieceEmoji(def) {
-  return PIECE_EMOJI[def?.id] ?? '❓';
-}
-
 export function opponentOf(owner) {
   return owner === 'south' ? 'north' : 'south';
 }
@@ -73,7 +50,7 @@ export function turnMessage(state, names, opponent) {
 }
 
 export function selectMessage(def) {
-  return `${def.name}を選択中 — 動き: ${MOVE_TEXT[def.move]}`;
+  return `${def.name}を選択中。動き: ${MOVE_TEXT[def.move]}`;
 }
 
 export function moveCountText(state) {
@@ -99,11 +76,11 @@ export function logLine(event, data, names) {
   const defenderOwner = opponentOf(event.attackerOwner);
   const attacker = `${names[event.attackerOwner]}の${pieceName(data, event.attacker)}`;
   const defender = `${names[defenderOwner]}の${pieceName(data, event.defender)}`;
-  return `${attacker} ⚔ ${defender} → ${RESULT_TEXT[event.result] ?? event.result}`;
+  return `${attacker} 対 ${defender}: ${RESULT_TEXT[event.result] ?? event.result}`;
 }
 
 export function hqTitle(owner, names) {
-  return `${names[owner]}の巣（本陣）`;
+  return `${names[owner]}の本陣（巣）`;
 }
 
 export function cellTitle(piece, def, viewer, names) {
@@ -127,7 +104,7 @@ export function inspectMessage(piece, data, viewer, names) {
   const def = pieceById(data, piece.type);
   const history = (piece.history || []).map((entry) => parseHistoryEntry(entry, data));
   const historyText = history.length ? `戦闘履歴: ${history.join('、')}` : '戦闘履歴なし';
-  return `${names[piece.owner]}の${def.name} — ${historyText}`;
+  return `${names[piece.owner]}の${def.name}。${historyText}`;
 }
 
 export function resultTitle(state, names, opponent) {

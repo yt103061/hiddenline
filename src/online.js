@@ -1,6 +1,7 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 
 const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const PROTOCOL_VERSION = 2;
 
 export function generateRoomCode() {
   let code = '';
@@ -54,6 +55,10 @@ export class OnlineRoom {
     });
 
     this.channel.on('broadcast', { event: 'msg' }, ({ payload }) => {
+      if (payload.protocolVersion !== PROTOCOL_VERSION) {
+        this.handlers.protocolError?.({ expected: PROTOCOL_VERSION, received: payload.protocolVersion ?? 1 });
+        return;
+      }
       this.handlers[payload.type]?.(payload);
     });
 
@@ -80,7 +85,7 @@ export class OnlineRoom {
   }
 
   send(type, payload = {}) {
-    this.channel?.send({ type: 'broadcast', event: 'msg', payload: { type, ...payload } });
+    this.channel?.send({ type: 'broadcast', event: 'msg', payload: { type, protocolVersion: PROTOCOL_VERSION, ...payload } });
   }
 
   leave() {

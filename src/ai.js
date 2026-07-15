@@ -1,10 +1,10 @@
-import { generateLegalMoves, occupantAt, hqOwnerAt } from './rules.js';
+import { generateLegalMoves, occupantAt, hqOwnerAt, hqCell } from './rules.js';
 
 export const DIFFICULTIES = {
-  beginner: { depth: 1, inference: false, noise: 8 },
-  intermediate: { depth: 1, inference: true, noise: 3 },
-  advanced: { depth: 2, inference: true, noise: 1 },
-  oni: { depth: 3, inference: true, noise: 0 },
+  beginner: { depth: 1, inference: false, omniscient: false, noise: 8 },
+  intermediate: { depth: 1, inference: true, omniscient: false, noise: 3 },
+  advanced: { depth: 2, inference: true, omniscient: false, noise: 1 },
+  oni: { depth: 3, inference: true, omniscient: true, noise: 0 },
 };
 
 export function chooseAiMove(state, data, combat, difficulty = 'intermediate') {
@@ -23,19 +23,44 @@ export function evaluateMove(state, move, data, combat, config) {
   let score = (state.board.rows - 1 - move.to.y) * 2;
 
   if (target) {
-    const result = combat.matrix[piece.type]?.[target.type];
-    score += result === 'WIN' ? 50 : result === 'DRAW' ? 8 : -25;
-    if (!config.inference && !target.revealed) score -= 10;
+    if (target.revealed || config.omniscient) {
+      score += combatScore(combat.matrix[piece.type]?.[target.type]);
+    } else if (config.inference) {
+      score += expectedHiddenCombatScore(state, piece.type, target.owner, data, combat);
+    } else {
+      score += 2;
+    }
   }
 
   if (hqOwnerAt(state.board, move.to) === 'south') score += 999;
 
-  const hqDistance = Math.min(
-    ...(state.board.hqCols ?? []).map((hqX) => Math.abs(move.to.x - hqX) + Math.abs(move.to.y - (state.board.rows - 1))),
-  );
+  const enemyHq = hqCell(state.board, 'south');
+  const hqDistance = enemyHq
+    ? Math.min(...Array.from({ length: enemyHq.span }, (_, offset) => (
+      Math.abs(move.to.x - (enemyHq.x + offset)) + Math.abs(move.to.y - enemyHq.y)
+    )))
+    : Infinity;
   if (Number.isFinite(hqDistance)) score += 20 - hqDistance * 2;
 
   return score;
+}
+
+function combatScore(result) {
+  return result === 'WIN' ? 50 : result === 'DRAW' ? 8 : -25;
+}
+
+function expectedHiddenCombatScore(state, attackerType, targetOwner, data, combat) {
+  const candidates = [];
+  for (const definition of data.pieces) {
+    const initialCount = definition[`count_${state.mode}`] || 0;
+    const knownCount = state.pieces.filter((piece) => (
+      piece.owner === targetOwner && piece.revealed && piece.type === definition.id
+    )).length;
+    const unknownCount = Math.max(0, initialCount - knownCount);
+    for (let index = 0; index < unknownCount; index += 1) candidates.push(definition.id);
+  }
+  if (!candidates.length) return 2;
+  return candidates.reduce((sum, type) => sum + combatScore(combat.matrix[attackerType]?.[type]), 0) / candidates.length;
 }
 
 export function updateInference(candidates, result) {
