@@ -102,6 +102,35 @@
       </form>
     </section>
 
+    <section id="screen-setup" class="screen">
+      <header class="game-bar">
+        <img src="assets/logo.svg" alt="HIDDEN LINE" class="bar-logo" />
+        <div class="bar-actions">
+          <button id="setupHome" class="ghost" type="button">ホームへ</button>
+        </div>
+      </header>
+      <p id="setupStatus" role="status">駒をタップして位置を変えます。</p>
+      <main id="setupApp">
+        <div class="stage">
+          <div class="board-wrap">
+            <div class="board" id="setupBoard"></div>
+            <svg id="setupBridges" class="bridge-layer" aria-hidden="true"></svg>
+          </div>
+        </div>
+        <aside id="setupSide">
+          <div class="setup-presets">
+            <button id="setupBalanced" class="preset-btn" type="button">⚖️ バランス</button>
+            <button id="setupAttack" class="preset-btn" type="button">⚔️ 攻撃</button>
+            <button id="setupDefense" class="preset-btn" type="button">🛡️ 守備</button>
+            <button id="setupShuffle" class="preset-btn" type="button">🔀 シャッフル</button>
+          </div>
+          <div class="setup-actions">
+            <button id="setupStart" class="primary" type="button">対局開始</button>
+          </div>
+        </aside>
+      </main>
+    </section>
+
     <section id="screen-game" class="screen">
       <header class="game-bar">
         <img src="assets/logo.svg" alt="HIDDEN LINE" class="bar-logo" />

@@ -1,6 +1,7 @@
 import piecesData from '../data/pieces.json' with { type: 'json' };
 import combat from '../data/combat_matrix.json' with { type: 'json' };
-import { createGame } from './state.js';
+import boards from '../data/boards.json' with { type: 'json' };
+import { createGame, buildFormation, createGameFromFormations, swapFormationPieces } from './state.js';
 import { applyMove, generateMovesForPiece, pieceById } from './rules.js';
 import { chooseAiMove } from './ai.js';
 import { grantBattlePoints } from './battlepass.js';
@@ -25,6 +26,13 @@ const ui = {
   gameSeq: 0,
 };
 
+const setup = {
+  active: false,
+  formations: {},
+  selected: null,
+  editingOwner: 'south',
+};
+
 const el = {
   board: document.querySelector('#board'),
   fx: document.querySelector('#fx'),
@@ -39,6 +47,9 @@ const el = {
   resultDialog: document.querySelector('#result-dialog'),
   resultTitle: document.querySelector('#resultTitle'),
   resultReason: document.querySelector('#resultReason'),
+  setupBoard: document.querySelector('#setupBoard'),
+  setupBridges: document.querySelector('#setupBridges'),
+  setupStatus: document.querySelector('#setupStatus'),
 };
 
 function show(screen) {
@@ -62,17 +73,21 @@ function redraw() {
 
 function newGame() {
   cancelPendingAi();
-  state = createGame(settings.mode, settings.preset);
-  ui.names = playerNames(settings.opponent);
-  ui.viewer = 'south';
-  ui.selected = null;
-  ui.selectedMoves = [];
-  ui.lastMove = null;
-  ui.busy = false;
-  el.handover.hidden = true;
-  show('game');
-  redraw();
-  message(turnMessage(state, ui.names, settings.opponent));
+  if (settings.opponent === 'ai') {
+    startSetupScreen();
+  } else {
+    state = createGame(settings.mode, settings.preset);
+    ui.names = playerNames(settings.opponent);
+    ui.viewer = 'south';
+    ui.selected = null;
+    ui.selectedMoves = [];
+    ui.lastMove = null;
+    ui.busy = false;
+    el.handover.hidden = true;
+    show('game');
+    redraw();
+    message(turnMessage(state, ui.names, settings.opponent));
+  }
 }
 
 function deselect() {
@@ -240,5 +255,94 @@ document.querySelector('#resultHome').onclick = () => {
 document.querySelector('#openHelpHome').onclick = () => openGuide(piecesData);
 document.querySelector('#openHelpGame').onclick = () => openGuide(piecesData);
 document.querySelector('#closeHelp').onclick = () => document.querySelector('#help-dialog').close();
+
+function startSetupScreen() {
+  setup.active = true;
+  setup.editingOwner = 'south';
+  setup.formations.south = buildFormation(settings.mode, settings.preset, 'south');
+  setup.formations.north = buildFormation(settings.mode, 'balanced', 'north');
+  setup.selected = null;
+  renderSetupBoard();
+  show('setup');
+}
+
+function renderSetupBoard() {
+  const board = boards[settings.mode];
+  const mockState = {
+    board,
+    pieces: setup.formations[setup.editingOwner] || [],
+  };
+  renderBoard(el.setupBoard, mockState, piecesData, { viewer: setup.editingOwner, selected: setup.selected }, { onCell: onSetupCell });
+  renderOverlay(el.setupBridges, board, setup.editingOwner);
+}
+
+function onSetupCell(x, y, piece) {
+  if (!piece || piece.owner !== setup.editingOwner) return;
+
+  if (setup.selected === piece.id) {
+    setup.selected = null;
+    renderSetupBoard();
+    return;
+  }
+
+  if (setup.selected === null) {
+    setup.selected = piece.id;
+    renderSetupBoard();
+    return;
+  }
+
+  const formation = setup.formations[setup.editingOwner];
+  const indexA = formation.findIndex(p => p.id === setup.selected);
+  const indexB = formation.findIndex(p => p.id === piece.id);
+
+  if (indexA >= 0 && indexB >= 0) {
+    setup.formations[setup.editingOwner] = swapFormationPieces(formation, indexA, indexB);
+    setup.selected = null;
+    renderSetupBoard();
+  }
+}
+
+function applyPreset(preset) {
+  setup.formations[setup.editingOwner] = buildFormation(settings.mode, preset, setup.editingOwner);
+  setup.selected = null;
+  renderSetupBoard();
+}
+
+function shuffleFormation() {
+  const formation = setup.formations[setup.editingOwner];
+  const shuffled = [...formation];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  setup.formations[setup.editingOwner] = shuffled;
+  setup.selected = null;
+  renderSetupBoard();
+}
+
+document.querySelector('#setupHome').onclick = () => {
+  setup.active = false;
+  show('home');
+};
+
+document.querySelector('#setupBalanced').onclick = () => applyPreset('balanced');
+document.querySelector('#setupAttack').onclick = () => applyPreset('attack');
+document.querySelector('#setupDefense').onclick = () => applyPreset('defense');
+document.querySelector('#setupShuffle').onclick = () => shuffleFormation();
+
+document.querySelector('#setupStart').onclick = () => {
+  setup.active = false;
+  state = createGameFromFormations(settings.mode, setup.formations.south, setup.formations.north);
+  ui.names = playerNames(settings.opponent);
+  ui.viewer = 'south';
+  ui.selected = null;
+  ui.selectedMoves = [];
+  ui.lastMove = null;
+  ui.busy = false;
+  el.handover.hidden = true;
+  show('game');
+  redraw();
+  message(turnMessage(state, ui.names, settings.opponent));
+};
 
 show('home');
