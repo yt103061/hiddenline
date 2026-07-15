@@ -11,6 +11,8 @@ export const REASON_TEXT = {
   surrender: '相手に動ける駒がいなくなりました',
   tiebreak: '規定手数に到達し、残り戦力で判定しました',
   resign: '投了により決着しました',
+  disconnect: '相手の切断から60秒が経過しました',
+  setup_disconnect: '配置完了前に接続が切れたため、レートは変動しません',
   noCapturer: '本陣を占領できる駒がいなくなりました',
   noCapturers: '双方とも本陣を占領できる駒がいなくなりました',
 };
@@ -41,7 +43,9 @@ export function roleText(definition) {
 export function playerNames(opponent) {
   return opponent === 'human'
     ? { south: 'プレイヤー1', north: 'プレイヤー2' }
-    : { south: 'あなた', north: 'AI' };
+    : opponent === 'online' || opponent === 'ranked' || opponent === 'friend'
+      ? { south: 'あなた', north: '対戦相手' }
+      : { south: 'あなた', north: 'CPU' };
 }
 
 export function pieceName(data, typeId) {
@@ -53,8 +57,8 @@ export function opponentOf(owner) {
 }
 
 export function turnMessage(state, names, opponent) {
-  if (opponent === 'ai' && state.turn === 'north') return 'AIが考え中…';
-  const who = opponent === 'ai' ? 'あなた' : names[state.turn];
+  if ((opponent === 'ai' || opponent === 'ranked_cpu') && state.turn === 'north') return 'CPUが考え中…';
+  const who = opponent === 'ai' || opponent === 'ranked_cpu' ? 'あなた' : names[state.turn];
   return `${who}の番です。駒を選んでください。`;
 }
 
@@ -118,7 +122,7 @@ export function inspectMessage(piece, data, viewer, names) {
 
 export function resultTitle(state, names, opponent) {
   if (state.winner === 'draw') return '引き分け';
-  if (opponent === 'ai') return state.winner === 'south' ? 'あなたの勝ち！' : 'あなたの負け…';
+  if (opponent === 'ai' || opponent === 'ranked_cpu') return state.winner === 'south' ? 'あなたの勝ち！' : 'あなたの負け…';
   return `${names[state.winner]}の勝ち！`;
 }
 

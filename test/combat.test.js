@@ -12,6 +12,7 @@ import {
 import { DIFFICULTIES, chooseAiMove, evaluateMove } from '../src/ai.js';
 import { PROTOCOL_VERSION, selectRandomPair } from '../src/online.js';
 import { battleMessage, logLine } from '../src/text.js';
+import { CPU_RANK_CONFIGS, RANKS, eloDelta, rankForRating, resetSeasonRating } from '../src/rank.js';
 
 const attackers = Object.keys(combat.matrix);
 const defenders = piecesData.pieces.map((piece) => piece.id).filter((id) => id !== 'flag');
@@ -36,7 +37,15 @@ for (const attacker of attackers.filter((id) => !['sp_eagle', 'sp_mouse'].includ
 assert.equal(resolveCombat(combat, 'sp_eagle', 'trap').result, 'WIN');
 assert.equal(resolveCombat(combat, 'sp_mouse', 'trap').result, 'WIN');
 assert.equal(battlepass.rewardTable.length, 50, 'battle pass has all 50 levels');
-assert.equal(PROTOCOL_VERSION, 4, 'online protocol is versioned for matchmaking and current rules');
+assert.equal(PROTOCOL_VERSION, 5, 'online protocol is versioned for authenticated ranked rules');
+assert.equal(RANKS.length, 10, 'commercial ranked play has ten visible ranks');
+assert.equal(rankForRating(1000).key, 'small_iii');
+assert.equal(rankForRating(1900).key, 'divine');
+assert.equal(eloDelta(1000, 1000, 1, 32), 16, 'equal-rating PvP win awards 16 RP');
+assert.equal(eloDelta(1000, 1000, 1, 16), 8, 'CPU fallback uses half-sized rating movement');
+assert.equal(resetSeasonRating(1800), 1400, 'season reset moves rating halfway to baseline');
+assert.equal(Object.keys(CPU_RANK_CONFIGS).length, 10, 'every visible rank has a CPU profile');
+assert.ok(Object.values(CPU_RANK_CONFIGS).every((config) => !config.omniscient), 'ranked CPU never uses hidden identities');
 assert.deepEqual(
   selectRandomPair([
     { id: 'later', joinedAt: 20 },

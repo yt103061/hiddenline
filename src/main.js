@@ -4,21 +4,23 @@ import boards from '../data/boards.json' with { type: 'json' };
 import { createGame, buildFormation, createGameFromFormations, swapFormationPieces, shuffleFormationPieces, chooseFirstTurn } from './state.js';
 import { applyMove, generateMovesForPiece, pieceById } from './rules.js';
 import { chooseAiMove } from './ai.js';
-import { grantBattlePoints } from './battlepass.js';
 import { renderBoard, updateSelection, renderLog, renderInfo, renderOverlay, renderHud, tokenEl } from './render.js';
 import { animateMove, showBattleCutIn } from './fx.js';
 import { openGuide } from './guide.js';
 import { OnlineRoom, RandomMatchmaker, generateRoomCode } from './online.js';
+import { initializeCommercialUI, trackEvent } from './commercial.js';
+import { supabase, invokeRpc } from './supabase.js';
 import {
   playerNames, turnMessage, selectMessage, battleMessage,
   inspectMessage, resultTitle, resultReason, opponentOf,
   MOVE_TEXT, roleText,
 } from './text.js';
 
-const settings = { opponent: 'ai', mode: 'casual', preset: 'balanced', difficulty: 'intermediate' };
+const settings = { opponent: 'ranked', mode: 'casual', preset: 'balanced', difficulty: 'small_iii' };
 const SESSION_KEY = 'hiddenline-session';
 const SESSION_VERSION = 2;
 const CUSTOM_PRESETS_KEY = 'hiddenline-custom-presets-v1';
+const ONLINE_RECONNECT_KEY = 'hiddenline-online-reconnect-v1';
 let state = null;
 const ui = {
   viewer: 'south',
@@ -55,6 +57,11 @@ const online = {
   startSent: false,
   pendingFirstTurn: null,
   matcher: null,
+  matchId: null,
+  isCpu: false,
+  sequence: 0,
+  heartbeatTimer: null,
+  reconnectTimer: null,
 };
 
 const el = {
@@ -78,11 +85,7 @@ const el = {
   lobbyCode: document.querySelector('#lobbyCode'),
   gameStatus: document.querySelector('#status'),
   onlineStatus: document.querySelector('#onlineStatus'),
-  homePrimaryActions: document.querySelector('#homePrimaryActions'),
-  difficultySummary: document.querySelector('#difficultySummary'),
-  settingSummary: document.querySelector('#settingSummary'),
-  homeSelectionSummary: document.querySelector('#homeSelectionSummary'),
-  heroStart: document.querySelector('#heroStart'),
+  heroStart: document.querySelector('#rankedHeroStart'),
   setupSelection: document.querySelector('#setupSelection'),
   setupSelectionEmpty: document.querySelector('#setupSelectionEmpty'),
   setupSelectionToken: document.querySelector('#setupSelectionToken'),
@@ -354,11 +357,53 @@ async function performMove(move) {
   return battle;
 }
 
+async function applyServerMove(move, nextState) {
+  ui.busy = true;
+  ui.selected = null;
+  ui.selectedMoves = [];
+  const previousLogLength = state?.log?.length || 0;
+  await animateMove(el.board, el.fx, move);
+  state = nextState;
+  ui.lastMove = { from: move.from, to: move.to };
+  const battle = (state.log?.length || 0) > previousLogLength ? state.log.at(-1) : null;
+  if (battle) await showBattleCutIn(battle, piecesData, ui.names, ui.viewer);
+  redraw();
+  ui.busy = false;
+  return battle;
+}
+
+async function fetchMatchView() {
+  const { data, error } = await supabase.functions.invoke('get-match-view', { body: { matchId: online.matchId } });
+  if (error) throw error;
+  online.sequence = Number(data.sequence) || online.sequence;
+  return data;
+}
+
 async function playMove(move) {
+  if (online.matchId) {
+    const { data, error } = await supabase.functions.invoke('submit-move', {
+      body: { matchId: online.matchId, sequence: online.sequence, move },
+    });
+    if (error) {
+      gameMessage('手をサーバーで確認できませんでした。もう一度お試しください。');
+      return;
+    }
+    online.sequence = Number(data.sequence) || online.sequence + 1;
+    const battle = await applyServerMove(data.move || move, data.playerState);
+    if (online.active) online.room.send('move', { move: data.move || move, sequence: online.sequence });
+    if (data.cpuMove && data.state) {
+      gameMessage('CPUが考えています…');
+      await wait(450);
+      await applyServerMove(data.cpuMove, data.state);
+    }
+    if (state.winner) finishGame();
+    else gameMessage(battle ? battleMessage(battle, piecesData, ui.names, ui.viewer) : turnMessage(state, ui.names, settings.opponent));
+    return;
+  }
   const battle = await performMove(move);
 
   if (online.active) {
-    online.room.send('move', { move });
+    online.room.send('move', { move, sequence: online.sequence });
   }
 
   if (state.winner) {
@@ -382,7 +427,12 @@ async function playMove(move) {
 
 async function applyOnlineMove(move) {
   if (!state || state.winner || ui.busy) return;
-  const battle = await performMove(move);
+  let view;
+  try { view = await fetchMatchView(); } catch {
+    gameMessage('対局状態を同期できませんでした。再接続してください。');
+    return;
+  }
+  const battle = await applyServerMove(move, view.state);
   if (state.winner) {
     finishGame();
     return;
@@ -436,13 +486,19 @@ el.handoverOk.onclick = () => {
 function finishGame() {
   cancelPendingAi();
   clearSession();
-  if (settings.opponent === 'ai') grantBattlePoints(70);
   gameMessage(resultTitle(state, ui.names, settings.opponent));
   el.resultTitle.textContent = resultTitle(state, ui.names, settings.opponent);
   const me = online.active ? online.myRole : 'south';
   el.resultTitle.className = state.winner === 'draw' ? 'draw' : state.winner === me ? 'win' : 'lose';
   el.resultReason.textContent = resultReason(state);
   el.resultDialog.showModal();
+  trackEvent('match_completed', { opponent: settings.opponent, result: state.winner === 'draw' ? 'draw' : state.winner === ui.viewer ? 'win' : 'loss' });
+  localStorage.removeItem(ONLINE_RECONNECT_KEY);
+  if (online.matchId) {
+    supabase.functions.invoke('finalize-match', {
+      body: { matchId: online.matchId },
+    }).catch(() => {});
+  }
 }
 
 document.querySelector('#setup').onsubmit = (event) => {
@@ -450,46 +506,22 @@ document.querySelector('#setup').onsubmit = (event) => {
   const form = new FormData(event.target);
   settings.opponent = form.get('opponent');
   settings.mode = form.get('mode');
-  settings.difficulty = form.get('difficulty');
-  if (settings.opponent === 'online') {
-    homeMessage('「部屋を作る」または「部屋に入る」を選んでください。', true);
-    return;
-  }
-  settings.preset = 'balanced';
-  newGame();
+  homeMessage('ランクマッチまたはフレンドマッチを選んでください。', true);
 };
 
 function updateHomeLauncher() {
-  const opponent = document.querySelector('input[name="opponent"]:checked')?.value || 'ai';
-  const mode = document.querySelector('input[name="mode"]:checked')?.value || 'casual';
-  const difficulty = document.querySelector('input[name="difficulty"]:checked')?.closest('.option-card')?.querySelector('.option-title')?.textContent || '中級';
-  const opponentLabel = { ai: 'AI', human: '2人対戦', online: 'オンライン' }[opponent];
-  const modeLabel = mode === 'classic' ? 'クラシック' : 'カジュアル';
-  el.settingSummary.textContent = `${modeLabel}${opponent === 'ai' ? ` · AI${difficulty}` : ''}`;
-  el.homeSelectionSummary.textContent = `${opponentLabel} · ${modeLabel}${opponent === 'ai' ? ` · ${difficulty}` : ''}`;
-  el.heroStart.textContent = opponent === 'ai' ? 'AIとすぐ遊ぶ' : opponent === 'human' ? '2人ですぐ遊ぶ' : 'オンライン対戦を選ぶ';
-  el.heroStart.type = opponent === 'online' ? 'button' : 'submit';
-  el.heroStart.onclick = opponent === 'online' ? () => document.querySelector('#group-online').scrollIntoView({ behavior: 'smooth', block: 'center' }) : null;
+  const opponent = document.querySelector('input[name="opponent"]:checked')?.value || 'ranked';
+  el.heroStart.textContent = 'ランクマッチを始める';
+  el.heroStart.type = 'button';
+  el.heroStart.onclick = () => document.querySelector('#onlineRandom').click();
 }
 
 for (const radio of document.querySelectorAll('input[name="opponent"]')) {
   radio.onchange = () => {
     if (!radio.checked) return;
-    document.querySelector('#group-difficulty').hidden = radio.value !== 'ai';
-    document.querySelector('#group-online').hidden = radio.value !== 'online';
-    el.homePrimaryActions.hidden = radio.value === 'online';
+    document.querySelector('#group-online').hidden = radio.value !== 'friend';
+    document.querySelector('#group-ranked').hidden = radio.value !== 'ranked';
     homeMessage('');
-    updateHomeLauncher();
-  };
-}
-
-for (const radio of document.querySelectorAll('input[name="mode"]')) {
-  radio.addEventListener('change', updateHomeLauncher);
-}
-
-for (const radio of document.querySelectorAll('input[name="difficulty"]')) {
-  radio.onchange = () => {
-    if (radio.checked) el.difficultySummary.textContent = radio.closest('.option-card').querySelector('.option-title').textContent;
     updateHomeLauncher();
   };
 }
@@ -498,8 +530,15 @@ updateHomeLauncher();
 
 document.querySelector('#resign').onclick = async () => {
   if (!state || state.winner || ui.busy) return;
-  const loser = settings.opponent === 'ai' ? 'south' : ui.viewer;
+  const loser = settings.opponent === 'ai' || settings.opponent === 'ranked_cpu' ? 'south' : ui.viewer;
   if (!await askConfirm(`${ui.names[loser]}が投了します。よろしいですか？`, '投了しますか')) return;
+  if (online.matchId) {
+    const { error } = await supabase.functions.invoke('resign-match', { body: { matchId: online.matchId } });
+    if (error) {
+      gameMessage('投了をサーバーへ送信できませんでした。もう一度お試しください。');
+      return;
+    }
+  }
   state.winner = opponentOf(loser);
   state.reason = 'resign';
   if (online.active) online.room.send('resign');
@@ -537,12 +576,19 @@ function leaveOnlineRoom() {
   online.matcher?.leave();
   online.matcher = null;
   if (online.room) {
-    if (state && !state.winner) online.room.send('resign');
+    if (state && !state.winner) {
+      online.room.send('resign');
+      if (online.matchId) supabase.functions.invoke('resign-match', { body: { matchId: online.matchId } }).catch(() => {});
+    }
     online.room.leave();
   }
+  clearInterval(online.heartbeatTimer);
+  clearTimeout(online.reconnectTimer);
   online.active = false;
   online.room = null;
   online.code = null;
+  online.matchId = null;
+  online.isCpu = false;
   online.myRole = null;
   online.isHost = false;
   online.configSent = false;
@@ -551,7 +597,120 @@ function leaveOnlineRoom() {
   online.myFormation = null;
   online.opponentFormation = null;
   online.startSent = false;
+  online.sequence = 0;
   online.pendingFirstTurn = null;
+  online.heartbeatTimer = null;
+  online.reconnectTimer = null;
+  localStorage.removeItem(ONLINE_RECONNECT_KEY);
+}
+
+function rememberOnlineMatch(extra = {}) {
+  if (!online.matchId) return;
+  localStorage.setItem(ONLINE_RECONNECT_KEY, JSON.stringify({
+    matchId: online.matchId,
+    role: online.myRole,
+    cpu: online.isCpu,
+    cpuRank: settings.difficulty,
+    ...extra,
+  }));
+}
+
+async function resumeOnlineMatch() {
+  if (online.matchId || document.body.dataset.screen !== 'home') return;
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem(ONLINE_RECONNECT_KEY) || 'null'); } catch { return; }
+  if (!saved?.matchId) return;
+  const { data: match, error } = await supabase.from('matches')
+    .select('id,mode,kind,status,cpu_rank_key,south_user_id,north_user_id')
+    .eq('id', saved.matchId).maybeSingle();
+  if (error || !match || ['finished', 'cancelled'].includes(match.status)) {
+    localStorage.removeItem(ONLINE_RECONNECT_KEY);
+    return;
+  }
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  online.matchId = match.id;
+  online.isCpu = match.kind === 'ranked_cpu';
+  online.myRole = match.south_user_id === user.id ? 'south' : 'north';
+  online.isHost = online.myRole === 'south';
+  online.configSent = match.status !== 'waiting';
+  settings.mode = match.mode;
+  settings.opponent = online.isCpu ? 'ranked_cpu' : match.kind === 'friend' ? 'friend' : 'ranked';
+  settings.difficulty = match.cpu_rank_key || saved.cpuRank || 'small_iii';
+  settings.preset = 'balanced';
+
+  if (!online.isCpu) {
+    online.active = true;
+    online.code = match.id;
+    online.room = new OnlineRoom();
+    wireOnlineHandlers();
+    show('lobby');
+    el.lobbyStatus.textContent = '対局へ再接続しています…';
+    try {
+      if (online.isHost) await online.room.host(match.id); else await online.room.guest(match.id);
+      startMatchHeartbeat();
+    } catch {
+      el.lobbyStatus.textContent = '再接続できませんでした。通信状態を確認してください。';
+      return;
+    }
+  }
+
+  if (match.status === 'active') {
+    try {
+      const view = await fetchMatchView();
+      state = view.state;
+      ui.names = online.isCpu ? playerNames('ranked_cpu') : onlineNames();
+      ui.viewer = online.myRole;
+      ui.selected = null;
+      ui.selectedMoves = [];
+      ui.lastMove = null;
+      ui.busy = false;
+      show('game');
+      redraw();
+      gameMessage(`対局へ再接続しました。${turnMessage(state, ui.names, settings.opponent)}`);
+    } catch {
+      el.lobbyStatus.textContent = '対局状態を復元できませんでした。';
+    }
+  } else if (online.isCpu) {
+    newGame();
+  } else if (match.status === 'setup') {
+    const { data: lastEvent } = await supabase.from('match_events').select('sequence')
+      .eq('match_id', match.id).order('sequence', { ascending: false }).limit(1).maybeSingle();
+    startOnlineSetup();
+    online.sequence = Number(lastEvent?.sequence) || 0;
+  }
+}
+
+function startMatchHeartbeat() {
+  clearInterval(online.heartbeatTimer);
+  const send = () => online.matchId && supabase.functions.invoke('match-heartbeat', { body: { matchId: online.matchId } }).catch(() => {});
+  send();
+  online.heartbeatTimer = setInterval(send, 15000);
+}
+
+function waitForOpponentReconnect() {
+  if (online.reconnectTimer || !online.matchId) return;
+  const status = state ? el.gameStatus : el.lobbyStatus;
+  status.textContent = '相手との接続が切れました。60秒間、再接続を待ちます…';
+  online.reconnectTimer = setTimeout(async () => {
+    online.reconnectTimer = null;
+    const { data, error } = await supabase.functions.invoke('claim-disconnect', { body: { matchId: online.matchId } });
+    if (error || data?.status === 'waiting') {
+      status.textContent = '相手の再接続を引き続き待っています…';
+      waitForOpponentReconnect();
+      return;
+    }
+    if (data.status === 'cancelled') {
+      el.lobbyStatus.textContent = '配置完了前の切断のため、レート変動なしで対局を終了しました。';
+      if (document.body.dataset.screen !== 'lobby') show('lobby');
+      return;
+    }
+    if (state && data.status === 'finished') {
+      state.winner = online.myRole;
+      state.reason = 'disconnect';
+      finishGame();
+    }
+  }, 60000);
 }
 
 document.querySelector('#openHelpHome').onclick = () => openGuide(piecesData);
@@ -725,7 +884,32 @@ document.querySelector('#setupBalanced').onclick = () => applyPreset('balanced')
 document.querySelector('#setupAttack').onclick = () => applyPreset('attack');
 document.querySelector('#setupDefense').onclick = () => applyPreset('defense');
 document.querySelector('#setupShuffle').onclick = () => shuffleFormation();
-document.querySelector('#customPresetSave').onclick = () => {
+async function savePresetToAccount(name, saved) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('ログインが必要です。');
+  const [{ data: rows, error: rowsError }, { data: profile, error: profileError }] = await Promise.all([
+    supabase.from('saved_formations').select('slot,mode,name').eq('user_id', user.id),
+    supabase.from('profiles').select('preset_slots').eq('id', user.id).single(),
+  ]);
+  if (rowsError || profileError) throw rowsError || profileError;
+  const existing = rows.find((row) => row.mode === settings.mode && row.name === name);
+  if (!existing && rows.length >= profile.preset_slots) throw new Error(`保存枠は${profile.preset_slots}個です。交換所で増やせます。`);
+  const used = new Set(rows.map((row) => row.slot));
+  const slot = existing?.slot || Array.from({ length: profile.preset_slots }, (_, index) => index + 1).find((candidate) => !used.has(candidate));
+  const { error } = await supabase.from('saved_formations').upsert({
+    user_id: user.id, slot, mode: settings.mode, name, positions: saved.positions, updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id,mode,name' });
+  if (error) throw error;
+}
+
+async function deletePresetFromAccount(name) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { error } = await supabase.from('saved_formations').delete().eq('user_id', user.id).eq('mode', settings.mode).eq('name', name);
+  if (error) throw error;
+}
+
+document.querySelector('#customPresetSave').onclick = async () => {
   const name = el.customPresetName.value.trim();
   if (!name) {
     el.customPresetStatus.textContent = 'プリセット名を入力してください。';
@@ -739,9 +923,15 @@ document.querySelector('#customPresetSave').onclick = () => {
     positions: normalizedFormation(setup.formations[setup.editingOwner], setup.editingOwner, boards[settings.mode]),
   };
   const existing = presets.findIndex((preset) => preset.name === name);
+  try {
+    await savePresetToAccount(name, saved);
+  } catch (error) {
+    el.customPresetStatus.textContent = error.message || 'アカウントへ保存できませんでした。';
+    return;
+  }
   if (existing >= 0) presets[existing] = saved;
   else presets.push(saved);
-  all[settings.mode] = presets.slice(-8);
+  all[settings.mode] = presets;
   writeCustomPresets(all);
   setup.activePreset = `custom:${name}`;
   el.customPresetName.value = '';
@@ -757,10 +947,16 @@ document.querySelector('#customPresetLoad').onclick = () => {
   }
   el.customPresetStatus.textContent = `「${name}」を適用しました。`;
 };
-document.querySelector('#customPresetDelete').onclick = () => {
+document.querySelector('#customPresetDelete').onclick = async () => {
   const name = el.customPresetSelect.value;
   if (!name) {
     el.customPresetStatus.textContent = '削除するプリセットを選んでください。';
+    return;
+  }
+  try {
+    await deletePresetFromAccount(name);
+  } catch {
+    el.customPresetStatus.textContent = 'アカウントから削除できませんでした。';
     return;
   }
   const all = readCustomPresets();
@@ -785,15 +981,34 @@ document.querySelector('#setupReset').onclick = () => {
   persistSession('setup');
 };
 
-document.querySelector('#setupStart').onclick = () => {
+document.querySelector('#setupStart').onclick = async () => {
   if (online.active) {
     if (online.ready) return;
-    online.ready = true;
     online.myFormation = setup.formations[online.myRole];
-    online.room.send('ready', { formation: online.myFormation });
+    const { data, error } = await supabase.functions.invoke('submit-formation', {
+      body: { matchId: online.matchId, formation: online.myFormation },
+    });
+    if (error) {
+      el.setupStatus.textContent = '配置をサーバーへ保存できませんでした。';
+      return;
+    }
+    online.sequence = Number(data?.sequence ?? data) || online.sequence + 1;
+    online.ready = true;
+    online.room.send('ready', { sequence: online.sequence });
     updateSetupStatus();
     maybeStartOnlineGame();
     return;
+  }
+
+  if (online.isCpu && online.matchId) {
+    const { data, error } = await supabase.functions.invoke('submit-formation', {
+      body: { matchId: online.matchId, formation: setup.formations.south },
+    });
+    if (error) {
+      el.setupStatus.textContent = '配置をサーバーへ保存できませんでした。';
+      return;
+    }
+    online.sequence = Number(data?.sequence ?? data) || online.sequence + 1;
   }
 
   if (settings.opponent === 'human' && setup.editingOwner === 'south') {
@@ -810,7 +1025,24 @@ document.querySelector('#setupStart').onclick = () => {
 async function finishSetupAndStartGame() {
   setup.active = false;
   const firstTurn = chooseFirstTurn();
-  state = createGameFromFormations(settings.mode, setup.formations.south, setup.formations.north, firstTurn);
+  if (online.isCpu && online.matchId) {
+    const { data, error } = await supabase.functions.invoke('start-match', { body: { matchId: online.matchId, firstTurn } });
+    if (error) {
+      el.setupStatus.textContent = 'CPU対局を開始できませんでした。';
+      setup.active = true;
+      return;
+    }
+    online.sequence = Number(data) || online.sequence + 1;
+    try {
+      state = (await fetchMatchView()).state;
+    } catch {
+      el.setupStatus.textContent = 'CPU対局の状態を取得できませんでした。';
+      setup.active = true;
+      return;
+    }
+  } else {
+    state = createGameFromFormations(settings.mode, setup.formations.south, setup.formations.north, firstTurn);
+  }
   ui.names = playerNames(settings.opponent);
   ui.viewer = settings.opponent === 'human' ? firstTurn : 'south';
   ui.selected = null;
@@ -825,7 +1057,16 @@ async function finishSetupAndStartGame() {
   ui.busy = false;
   gameMessage(turnMessage(state, ui.names, settings.opponent));
   persistSession('game');
-  scheduleOpeningAiTurn();
+  if (online.isCpu && state.turn === 'north') {
+    const { data, error } = await supabase.functions.invoke('cpu-move', { body: { matchId: online.matchId, sequence: online.sequence } });
+    if (error) gameMessage('CPUの初手を取得できませんでした。再接続してください。');
+    else {
+      online.sequence = Number(data.sequence) || online.sequence + 1;
+      await applyServerMove(data.cpuMove, data.state);
+      if (state.winner) finishGame();
+      else gameMessage(turnMessage(state, ui.names, settings.opponent));
+    }
+  } else scheduleOpeningAiTurn();
 }
 
 function startOnlineSetup() {
@@ -841,6 +1082,7 @@ function startOnlineSetup() {
   online.opponentFormation = null;
   online.myFormation = null;
   online.startSent = false;
+  online.sequence = 0;
   online.pendingFirstTurn = null;
   updateCustomPresetOptions();
   el.customPresetStatus.textContent = '';
@@ -848,7 +1090,7 @@ function startOnlineSetup() {
   show('setup');
 }
 
-function maybeStartOnlineGame() {
+async function maybeStartOnlineGame() {
   if (!online.ready || !online.opponentReady) return;
   if (online.pendingFirstTurn) {
     const firstTurn = online.pendingFirstTurn;
@@ -859,17 +1101,27 @@ function maybeStartOnlineGame() {
   if (!online.isHost || online.startSent) return;
   online.startSent = true;
   const firstTurn = chooseFirstTurn();
-  online.room.send('start', { firstTurn });
+  const { data, error } = await supabase.functions.invoke('start-match', { body: { matchId: online.matchId, firstTurn } });
+  if (error) {
+    online.startSent = false;
+    el.setupStatus.textContent = '対局を開始できませんでした。';
+    return;
+  }
+  online.sequence = Number(data) || online.sequence + 1;
+  online.room.send('start', { firstTurn, sequence: online.sequence });
   startOnlineGame(firstTurn);
 }
 
 async function startOnlineGame(firstTurn) {
   if (state || !online.ready || !online.opponentReady) return;
-  const southFormation = online.myRole === 'south' ? online.myFormation : online.opponentFormation;
-  const northFormation = online.myRole === 'north' ? online.myFormation : online.opponentFormation;
-
   setup.active = false;
-  state = createGameFromFormations(settings.mode, southFormation, northFormation, firstTurn);
+  try {
+    state = (await fetchMatchView()).state;
+  } catch {
+    el.setupStatus.textContent = '対局状態を安全に取得できませんでした。';
+    setup.active = true;
+    return;
+  }
   ui.names = onlineNames();
   ui.viewer = online.myRole;
   ui.selected = null;
@@ -897,19 +1149,21 @@ function wireOnlineHandlers() {
     startOnlineSetup();
   });
 
-  online.room.on('ready', ({ formation }) => {
-    online.opponentFormation = formation;
+  online.room.on('ready', ({ sequence }) => {
     online.opponentReady = true;
+    online.sequence = Math.max(online.sequence, Number(sequence) || 0);
     maybeStartOnlineGame();
   });
 
-  online.room.on('start', ({ firstTurn }) => {
+  online.room.on('start', ({ firstTurn, sequence }) => {
     if (firstTurn !== 'south' && firstTurn !== 'north') return;
+    online.sequence = Math.max(online.sequence, Number(sequence) || 0);
     online.pendingFirstTurn = firstTurn;
     maybeStartOnlineGame();
   });
 
-  online.room.on('move', ({ move }) => {
+  online.room.on('move', ({ move, sequence }) => {
+    online.sequence = Math.max(online.sequence, Number(sequence) || 0);
     applyOnlineMove(move);
   });
 
@@ -921,6 +1175,11 @@ function wireOnlineHandlers() {
   });
 
   online.room.on('presence', (count) => {
+    if (count >= 2 && online.reconnectTimer) {
+      clearTimeout(online.reconnectTimer);
+      online.reconnectTimer = null;
+      if (state && !state.winner) gameMessage(turnMessage(state, ui.names, 'online'));
+    }
     if (online.isHost && count >= 2 && !online.configSent) {
       online.configSent = true;
       online.room.send('config', { mode: settings.mode });
@@ -929,13 +1188,7 @@ function wireOnlineHandlers() {
   });
 
   online.room.on('leave', () => {
-    if (state && !state.winner) {
-      state.winner = online.myRole;
-      state.reason = 'resign';
-      finishGame();
-    } else if (!state) {
-      el.lobbyStatus.textContent = '相手が退出しました。もう一度お試しください。';
-    }
+    waitForOpponentReconnect();
   });
 }
 
@@ -943,18 +1196,34 @@ document.querySelector('#onlineCodeInput').oninput = (event) => {
   event.target.value = event.target.value.toUpperCase();
 };
 
-async function enterMatchedRoom({ code, role }) {
+async function enterMatchedRoom({ matchId, role, cpu = false, cpuRank = 'small_iii' }) {
+  trackEvent('ranked_match_found', { cpu });
   online.matcher?.leave();
   online.matcher = null;
+  online.matchId = matchId;
+  online.isCpu = cpu;
+  if (cpu) {
+    online.active = false;
+    online.myRole = 'south';
+    settings.opponent = 'ranked_cpu';
+    settings.mode = 'casual';
+    settings.difficulty = cpuRank;
+    settings.preset = 'balanced';
+    rememberOnlineMatch();
+    newGame();
+    return;
+  }
   online.myRole = role === 'host' ? 'south' : 'north';
   online.isHost = role === 'host';
-  online.code = code;
+  online.code = matchId;
   online.room = new OnlineRoom();
   wireOnlineHandlers();
   el.lobbyStatus.textContent = '対戦相手が見つかりました。対局へ接続しています…';
   try {
-    if (role === 'host') await online.room.host(code);
-    else await online.room.guest(code);
+    if (role === 'host') await online.room.host(matchId);
+    else await online.room.guest(matchId);
+    startMatchHeartbeat();
+    rememberOnlineMatch();
     el.lobbyStatus.textContent = role === 'host' ? '相手の接続を待っています…' : 'ホストの準備を待っています…';
   } catch {
     el.lobbyStatus.textContent = '対局ルームへの接続に失敗しました。もう一度お試しください。';
@@ -962,27 +1231,31 @@ async function enterMatchedRoom({ code, role }) {
 }
 
 document.querySelector('#onlineRandom').onclick = async () => {
-  const form = new FormData(document.querySelector('#setup'));
-  settings.opponent = 'online';
-  settings.mode = form.get('mode');
+  trackEvent('ranked_queue_joined');
+  settings.opponent = 'ranked';
+  settings.mode = 'casual';
   settings.preset = 'balanced';
   state = null;
   online.active = true;
   online.matcher = new RandomMatchmaker();
   show('lobby');
   el.lobbyCode.hidden = true;
-  el.lobbyStatus.textContent = `${settings.mode === 'casual' ? 'カジュアル' : 'クラシック'}で対戦相手を探しています…`;
+  el.lobbyStatus.textContent = '同じ実力の対戦相手を探しています… 残り20秒';
   try {
-    await online.matcher.join(settings.mode, (match) => enterMatchedRoom(match));
+    await online.matcher.join(settings.mode, (match) => enterMatchedRoom(match), (remaining, error) => {
+      if (remaining === 0) trackEvent('ranked_cpu_fallback');
+      el.lobbyStatus.textContent = error
+        ? 'マッチングに接続できませんでした。'
+        : remaining > 0 ? `同じ実力の対戦相手を探しています… 残り${remaining}秒` : '同ランクのCPUを準備しています…';
+    });
   } catch {
     el.lobbyStatus.textContent = 'ランダムマッチに接続できません。時間をおいて再度お試しください。';
   }
 };
 
 document.querySelector('#onlineHost').onclick = async () => {
-  const form = new FormData(document.querySelector('#setup'));
-  settings.opponent = 'online';
-  settings.mode = form.get('mode');
+  settings.opponent = 'friend';
+  settings.mode = document.querySelector('input[name="friendMode"]:checked')?.value || 'casual';
   settings.preset = 'balanced';
   homeMessage('部屋を準備しています。');
   state = null;
@@ -999,7 +1272,14 @@ document.querySelector('#onlineHost').onclick = async () => {
   wireOnlineHandlers();
 
   try {
-    await online.room.host(online.code);
+    online.matchId = await invokeRpc('create_friend_match', {
+      friend_id: document.querySelector('#friendSelect').value || null,
+      requested_mode: settings.mode,
+      requested_code: online.code,
+    });
+    await online.room.host(online.matchId);
+    startMatchHeartbeat();
+    rememberOnlineMatch();
   } catch {
     el.lobbyStatus.textContent = 'オンライン対戦に接続できません。時間をおいて再度お試しください。';
     return;
@@ -1020,8 +1300,7 @@ document.querySelector('#onlineJoin').onclick = async () => {
     return;
   }
   codeInput.removeAttribute('aria-invalid');
-  const form = new FormData(document.querySelector('#setup'));
-  settings.opponent = 'online';
+  settings.opponent = 'friend';
   settings.preset = 'balanced';
   homeMessage('部屋へ接続しています。');
   state = null;
@@ -1038,7 +1317,12 @@ document.querySelector('#onlineJoin').onclick = async () => {
   wireOnlineHandlers();
 
   try {
-    await online.room.guest(code);
+    online.matchId = await invokeRpc('join_friend_match', { requested_code: code });
+    const { data: match } = await supabase.from('matches').select('mode').eq('id', online.matchId).single();
+    settings.mode = match.mode;
+    await online.room.guest(online.matchId);
+    startMatchHeartbeat();
+    rememberOnlineMatch();
   } catch {
     el.lobbyStatus.textContent = 'オンライン対戦に接続できません。部屋コードを確認してください。';
     return;
@@ -1080,3 +1364,9 @@ window.addEventListener('popstate', (event) => {
 });
 
 if (!restoreSession()) show('home', { replace: true });
+initializeCommercialUI().then((session) => {
+  if (session) resumeOnlineMatch();
+}).catch((error) => {
+  const message = document.querySelector('#authMessage');
+  if (message) message.textContent = `アカウント情報を読み込めませんでした: ${error.message}`;
+});

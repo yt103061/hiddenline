@@ -1,8 +1,16 @@
 {
   "type": "module",
   "scripts": {
-    "test": "node test/combat.test.js",
-    "start": "python3 -m http.server 8000"
+    "test": "node test/combat.test.js && node test/commercial.test.js",
+    "dev": "vite --host 127.0.0.1 --port 8000",
+    "start": "vite --host 127.0.0.1 --port 8000",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 8000"
   },
-  "devDependencies": {}
+  "dependencies": {
+    "@supabase/supabase-js": "2.100.0"
+  },
+  "devDependencies": {
+    "vite": "8.1.4"
+  }
 }

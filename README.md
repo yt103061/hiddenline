@@ -1,42 +1,63 @@
 # アニマルライン / HIDDEN LINE
 
-依存ゼロのブラウザ版ボードゲームです。ゲームロジックは `/data` 配下のJSONを正とし、`src/rules.js` が移動・戦闘・勝敗を解決します。
+正体を隠した動物駒で戦う、登録制のオンラインボードゲームです。ランクマッチ、フレンドマッチ、10段階ランク、ランキング、どんぐり交換所、28日バトルパスを備えます。
 
-## 実行
+## ローカル実行
+
+Node.js 20.19以上を使用します。
 
 ```bash
-python3 -m http.server 8000
+npm install
+cp .env.example .env.local
+npm start
 ```
 
-ブラウザで `http://localhost:8000/` を開きます。
-
-## テスト
+`.env.local`へ対象Supabaseプロジェクトの`VITE_SUPABASE_URL`と`VITE_SUPABASE_PUBLISHABLE_KEY`を設定します。ブラウザへsecret key／service role keyを置かないでください。
 
 ```bash
 npm test
+npm run build
 ```
 
-テストでは、戦闘行列、駒数、複合本陣セル、移動、勝敗、プリセット、CPUの非公開情報制限、オンライン通信形式、SVGアセットを検証します。
+## Supabase
 
-## ルールとデータ
+対象プロジェクトは`lxpqnmqfpwrnckoyxiab`です。初回セットアップでは次を行います。
 
-- カジュアルは4×7の盤に11駒、クラシックは8×9の盤に31駒を各陣営に配置します。
-- 各陣営の本陣（巣）は、横2列分を使う1つの論理マスです。駒を1つ配置できます。
-- ハチの巣（罠）は本陣と突入口には配置できません。
-- すべての移動可能駒が敵の本陣へ入れますが、生存した少佐以上（ライオン〜イノシシ）が入った場合だけ勝利します。
-- 敵駒は戦闘後も伏せ表示のままです。勝ち・負け・相打ちの結果から正体を推理します。
-- 初級から上級のCPUは公開情報だけを使います。鬼は明示されたハンデとして敵駒を把握します。
-- 駒数とSVGパスは `data/pieces.json`、盤面と本陣位置は `data/boards.json` が正です。
-- オンライン対局は通信形式のバージョンが一致するクライアント同士で開始します。
-- ローカル対局と配置は同一タブのセッションへ保存され、ページ更新後に復元されます。旧形式は安全に破棄します。
-- バトルパスはローカル進行のみで、課金処理は `purchaseHook` に分離しています。
+1. Supabase CLIで対象プロジェクトへログイン・リンクする。
+2. `supabase/migrations`のマイグレーションを適用する。
+3. Google AuthとメールOTPを有効化し、本番URLとローカルURLをRedirect URLsへ登録する。
+4. Edge Functionsをデプロイする。
+5. `APP_ORIGIN`、`STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`をFunction secretsへ登録する。
+6. Stripe Webhookを`/functions/v1/stripe-webhook`へ接続する。
+7. Security／Performance Advisorsを確認する。
 
-## 操作
+公開テーブルにはRLSを設定し、完全な対局状態は`private.match_states`へ保存します。ランク・報酬・購入権利はクライアントのローカル保存を信用せず、DB関数とEdge Functionsで確定します。
 
-- 盤面はTabキーで入り、矢印キーでマスを移動します。
-- EnterまたはSpaceで駒を選択し、移動します。
-- フォーカス中の駒でIキーを押すと戦闘履歴を確認できます。
+## 商用対戦仕様
 
-## Vercelへのデプロイ
+- 全対戦でGoogleまたはメールOTPによるアカウント登録が必要です。
+- ランクマッチはカジュアル盤固定です。レート差±100から検索し、5秒ごとに範囲を拡大、20秒後に同ランクCPUへ切り替えます。
+- ランクは小動物III／II／I、森の動物III／II／I、猛獣III／II／I、神獣の10段階です。
+- 対人戦はElo `K=32`、CPU戦は`K=16`、最低レートは1000です。
+- CPUは10ランクすべてで非公開の敵駒を直接参照しません。
+- フレンドマッチはCasual／Classicを選択でき、レート変動はありません。
+- ランク対人勝利30、CPU勝利15、フレンド勝利10どんぐりです。フレンド報酬は1日3勝までです。
+- ショップ商品は駒スキン、盤面テーマ、保存配置枠のみで、駒能力には影響しません。
+- シーズンは28日。終了時のレートは`1000 + (旧レート - 1000) × 0.5`へリセットします。
 
-ビルド工程なしの静的サイトとして配信できます。VercelではFramework PresetをOther、Build Commandを空、Output Directoryを `.` に設定します。`vercel.json` は `data/` を再検証し、`assets/` を長期キャッシュする設定です。
+## ゲームルール
+
+- Casualは4×7・11駒、Classicは8×9・31駒です。
+- 本陣（巣）は横2列分を使う1つの論理マスで、駒を1つ配置できます。
+- ハチの巣（罠）は本陣と突入口へ配置できません。
+- 移動可能な駒は敵本陣へ入れますが、少佐以上が入った場合だけ勝利します。
+- 敵駒は戦闘後も伏せたまま表示し、勝敗結果だけを公開します。
+
+## Vercel
+
+Vercelは`npm run build`を実行し、`dist`を配信します。次の環境変数をProduction／Previewへ設定します。
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+Supabase AuthのSite URLとRedirect URLsにもVercel本番・Preview URLを登録してください。

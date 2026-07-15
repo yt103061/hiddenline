@@ -1,7 +1,7 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+import { supabase, invokeRpc, currentUser } from './supabase.js';
 
 const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
 
 export function generateRoomCode() {
   let code = '';
@@ -9,26 +9,6 @@ export function generateRoomCode() {
     code += ROOM_CODE_CHARS[Math.floor(Math.random() * ROOM_CODE_CHARS.length)];
   }
   return code;
-}
-
-let supabasePromise = null;
-let clientPromise = null;
-
-function loadSupabase() {
-  if (!supabasePromise) {
-    supabasePromise = import('https://esm.sh/@supabase/supabase-js@2').catch((error) => {
-      supabasePromise = null;
-      throw error;
-    });
-  }
-  return supabasePromise;
-}
-
-function getSupabaseClient() {
-  if (!clientPromise) {
-    clientPromise = loadSupabase().then(({ createClient }) => createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
-  }
-  return clientPromise;
 }
 
 export function selectRandomPair(players) {
@@ -40,62 +20,52 @@ export function selectRandomPair(players) {
 
 export class RandomMatchmaker {
   constructor() {
-    this.channel = null;
-    this.clientId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
-    this.joinedAt = Date.now();
-    this.claimed = false;
+    this.timer = null;
+    this.startedAt = 0;
     this.onMatch = null;
   }
 
-  async join(mode, onMatch) {
-    const client = await getSupabaseClient();
+  async join(_mode, onMatch, onTick = null) {
     this.onMatch = onMatch;
-    this.channel = client.channel(`hiddenline:matchmaking:${PROTOCOL_VERSION}:${mode}`, {
-      config: { presence: { key: this.clientId }, broadcast: { self: false } },
-    });
-
-    this.channel.on('broadcast', { event: 'match' }, ({ payload }) => {
-      if (payload.protocolVersion !== PROTOCOL_VERSION || payload.guestId !== this.clientId || this.claimed) return;
-      this.claimed = true;
-      this.onMatch?.({ code: payload.code, role: 'guest' });
-    });
-
-    this.channel.on('presence', { event: 'sync' }, () => this._pairIfReady());
-
-    await new Promise((resolve, reject) => {
-      this.channel.subscribe(async (status, error) => {
-        if (status === 'SUBSCRIBED') {
-          await this.channel.track({ id: this.clientId, joinedAt: this.joinedAt });
-          resolve();
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          reject(error || new Error('マッチングへの接続に失敗しました'));
+    this.startedAt = Date.now();
+    const initial = await invokeRpc('join_ranked_queue');
+    if (initial.status === 'matched') return this._resolveMatch(initial.matchId);
+    this.timer = setInterval(async () => {
+      try {
+        const elapsed = Date.now() - this.startedAt;
+        onTick?.(Math.max(0, 20 - Math.floor(elapsed / 1000)));
+        const result = elapsed >= 20000
+          ? await invokeRpc('claim_cpu_fallback')
+          : await invokeRpc('poll_ranked_queue');
+        if (result.status === 'matched') await this._resolveMatch(result.matchId);
+        if (result.status === 'cpu') {
+          this._stopTimer();
+          this.onMatch?.({ matchId: result.matchId, cpu: true, cpuRank: result.cpuRank });
         }
-      });
-    });
+      } catch (error) {
+        this._stopTimer();
+        onTick?.(null, error);
+      }
+    }, 1000);
   }
 
-  async _pairIfReady() {
-    if (this.claimed || !this.channel) return;
-    const players = Object.values(this.channel.presenceState()).flat().map((entry) => ({
-      id: entry.id,
-      joinedAt: Number(entry.joinedAt) || 0,
-    }));
-    const [host, guest] = selectRandomPair(players);
-    if (!host || !guest || host.id !== this.clientId) return;
-
-    this.claimed = true;
-    const code = generateRoomCode();
-    await this.channel.send({
-      type: 'broadcast',
-      event: 'match',
-      payload: { protocolVersion: PROTOCOL_VERSION, guestId: guest.id, code },
-    });
-    this.onMatch?.({ code, role: 'host' });
+  async _resolveMatch(matchId) {
+    this._stopTimer();
+    const user = await currentUser();
+    const { data, error } = await supabase.from('matches').select('south_user_id,north_user_id').eq('id', matchId).single();
+    if (error) throw error;
+    this.onMatch?.({ matchId, role: data.south_user_id === user.id ? 'host' : 'guest' });
   }
 
-  leave() {
-    this.channel?.unsubscribe();
-    this.channel = null;
+  _stopTimer() {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+  }
+
+  async leave() {
+    this._stopTimer();
+    const user = await currentUser();
+    if (user) await supabase.from('ranked_queue').delete().eq('user_id', user.id);
     this.onMatch = null;
   }
 }
@@ -123,11 +93,11 @@ export class OnlineRoom {
   }
 
   async _join(code) {
-    const client = await getSupabaseClient();
+    const client = supabase;
     const selfKey = `${this.role}-${Math.random().toString(36).slice(2, 8)}`;
 
-    this.channel = client.channel(`hiddenline:${code}`, {
-      config: { presence: { key: selfKey }, broadcast: { self: false } },
+    this.channel = client.channel(`match:${code}`, {
+      config: { private: true, presence: { key: selfKey }, broadcast: { self: false } },
     });
 
     this.channel.on('broadcast', { event: 'msg' }, ({ payload }) => {

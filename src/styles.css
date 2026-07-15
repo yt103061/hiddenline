@@ -1273,6 +1273,116 @@ body[data-screen="home"] .opponent-cards .option-card {
   .selection-summary strong { max-width: 17ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 
+/* Commercial account, ranked, friends and rewards surfaces */
+.auth-gate {
+  min-height: calc(100dvh - 36px);
+  display: grid;
+  place-items: center;
+  padding: 32px 0;
+}
+
+.auth-card {
+  width: min(100%, 520px);
+  padding: clamp(24px, 5vw, 42px);
+  border: 3px solid #fff;
+  border-radius: 32px;
+  background: rgb(255 253 245 / 96%);
+  box-shadow: 0 22px 60px rgb(83 111 87 / 18%);
+  text-align: center;
+}
+
+.auth-card > img { width: 82px; height: 82px; border-radius: 24px; }
+.auth-card h1 { margin: 16px 0 10px; color: #315a4d; font-size: clamp(1.7rem, 6vw, 2.5rem); line-height: 1.25; }
+.auth-card > p { color: #60776d; }
+.profile-form .terms-check { grid-template-columns: auto 1fr; align-items: center; }
+.profile-form .terms-check input { width: 20px; height: 20px; }
+.auth-card > small { display: block; margin-top: 18px; color: #71857c; line-height: 1.55; }
+.auth-google { width: 100%; margin-top: 12px; }
+.email-login-form, .profile-form { display: grid; gap: 12px; text-align: left; }
+.email-login-form > label, .profile-form label { color: #526e63; font-size: .82rem; font-weight: 800; }
+.email-login-form input, .profile-form input, .friend-picker select {
+  width: 100%; min-height: 46px; padding: 10px 12px; border: 2px solid #b5d5c6; border-radius: 12px; color: #29483e; background: #fff;
+}
+.profile-form label { display: grid; gap: 6px; }
+
+.home-account-actions { display: flex; align-items: center; gap: 8px; }
+.account-chip { display: grid; min-height: 48px; padding: 7px 13px; color: #315a4d; border: 2px solid #b5d5c6; background: #effaf4; text-align: left; }
+.account-chip small { color: #6b8278; font-size: .66rem; }
+
+.player-dashboard {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr auto;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+.player-dashboard > div { padding: 13px 15px; border: 1px solid #ead8aa; border-radius: 16px; background: #fff9e9; }
+.rank-badge, .season-badge { display: grid; gap: 2px; }
+.rank-badge span, .rank-badge small, .season-badge small { color: #71857c; font-size: .7rem; font-weight: 750; }
+.rank-badge strong { color: #c4513a; font-size: 1.12rem; }
+.currency-badge { display: flex; align-items: center; gap: 9px; }
+.currency-badge > span { color: #a96e35; font-size: 1.7rem; }
+.currency-badge div { display: grid; }
+.currency-badge small { color: #71857c; font-size: .66rem; }
+.dashboard-links { display: flex; align-items: center; gap: 3px; }
+
+body[data-screen="home"] .opponent-cards:has(.match-type-card) { grid-template-columns: repeat(2, 1fr); }
+.ranked-group { padding: 18px; border: 2px solid #f1c55c; border-radius: 18px; background: #fff9e6; }
+.friend-picker { display: grid; gap: 7px; margin-bottom: 12px; }
+.friend-picker label { color: #526e63; font-size: .78rem; font-weight: 800; }
+.friend-settings { margin: 10px 0; }
+.friend-settings summary { color: #315a4d; cursor: pointer; font-weight: 800; }
+.friend-mode-cards { margin-top: 10px; }
+
+.commercial-dialog { width: min(calc(100% - 24px), 680px); max-height: 86dvh; color: #29483e; border-color: #f0d9a4; background: #fffdf4; }
+.dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.dialog-heading h2 { margin: 0; }
+.commercial-dialog section { margin-top: 24px; padding-top: 18px; border-top: 1px solid #eadcb8; }
+.commercial-dialog h3 { margin: 0 0 10px; color: #397862; }
+.account-stats { padding: 14px; border-radius: 14px; background: #fff2d4; font-weight: 850; text-align: center; }
+.friend-search-result { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; margin-top: 10px; }
+.friend-list { display: grid; gap: 7px; margin-top: 12px; }
+.friend-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 11px; border-radius: 12px; background: #f5faed; }
+.friend-row > span:last-child { display: flex; align-items: center; gap: 5px; }
+.leaderboard-list { display: grid; gap: 8px; padding: 0; list-style: none; }
+.leaderboard-list li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 13px; background: #f5faed; }
+.leaderboard-list li span:last-child { color: #6a7f75; font-size: .8rem; }
+.leaderboard-list .leaderboard-heading { margin-top: 10px; color: #c4513a; background: #fff2d4; font-weight: 900; }
+.leaderboard-list .is-self { outline: 3px solid #e8a83e; background: #fff7dc; }
+.leaderboard-list .leaderboard-empty { color: #6a7f75; justify-content: center; }
+.leaderboard-list em { margin-left: 5px; color: #3a8068; font-size: .58rem; font-style: normal; }
+
+body[data-piece-skin="forest"] .token-face { filter: saturate(1.2) hue-rotate(18deg); }
+body[data-piece-skin="night"] .token-face { filter: saturate(.9) hue-rotate(175deg) brightness(.82); }
+body[data-board-theme="spring"] .cell:not(.water):not(.hq) { background: #dff1ba; }
+body[data-board-theme="spring"] .cell.island { background: #f8d991; }
+body[data-board-theme="moon"] .cell:not(.water):not(.hq) { background: #afb6d8; }
+body[data-board-theme="moon"] .cell.water { background: #6078a8; }
+.shop-list { display: grid; gap: 10px; }
+.pass-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pass-cards button { display: flex; align-items: center; justify-content: space-between; }
+.inventory-list, .purchase-history { display: grid; gap: 7px; }
+.inventory-list > div, .purchase-history > div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 11px; border-radius: 11px; background: #f5faed; }
+.inventory-list small, .purchase-history small { color: #6a7f75; }
+.shop-item { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 15px; border: 1px solid #ead8aa; border-radius: 15px; background: #fff9e9; }
+.shop-item p { margin: 3px 0 0; color: #6a7f75; font-size: .78rem; }
+
+@media (max-width: 700px) {
+  .player-dashboard { grid-template-columns: 1fr 1fr; }
+  .dashboard-links { justify-content: center; }
+}
+
+@media (max-width: 560px) {
+  .auth-gate { min-height: calc(100dvh - 16px); padding: 8px 0; }
+  .auth-card { padding: 24px 18px; border-radius: 24px; }
+  .home-account-actions > .text-button { display: none; }
+  .account-chip { padding-inline: 9px; }
+  .player-dashboard { gap: 7px; margin-bottom: 18px; }
+  .player-dashboard > div { padding: 10px; }
+  body[data-screen="home"] .opponent-cards:has(.match-type-card) { grid-template-columns: 1fr 1fr; }
+  .shop-item { align-items: stretch; flex-direction: column; }
+}
+
 .handover-card {
   max-width: 420px;
   padding: 30px;

@@ -71,7 +71,7 @@ function createCell(state, data, x, y, ui, handlers) {
     if (hidden) {
       cell.append(tokenEl(piece.owner, data.backAsset, '伏せ駒', 'back'));
     } else {
-      cell.append(tokenEl(piece.owner, def.asset, def.name));
+      cell.append(tokenEl(piece.owner, def?.asset || data.backAsset, def?.name || '駒'));
     }
   }
 
@@ -238,7 +238,8 @@ export function renderHud(el, state, data, ui) {
       <div class="hud-captured" aria-label="取られた駒">
         ${dead.map((piece) => {
           const def = pieceById(data, piece.type);
-          return `<span class="mini-token ${owner}" title="${def.name}"><img src="${def.asset}" alt="" /></span>`;
+          const hidden = owner !== ui.viewer;
+          return `<span class="mini-token ${owner}" title="${hidden ? '正体不明の駒' : def?.name || '駒'}"><img src="${hidden ? data.backAsset : def?.asset || data.backAsset}" alt="" /></span>`;
         }).join('')
           || '<span class="hud-none">まだ取られていません</span>'}
       </div>`;

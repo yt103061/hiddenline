@@ -11,12 +11,39 @@
   </head>
   <body data-screen="home">
     <section id="screen-home" class="screen">
+      <section id="authGate" class="auth-gate" aria-labelledby="authTitle">
+        <div class="auth-card" id="loginPanel">
+          <img src="assets/app-icon-v2.png" alt="" />
+          <span class="home-kicker">森の対戦広場へようこそ</span>
+          <h1 id="authTitle">アカウントを作って対戦しよう</h1>
+          <p>ランク、どんぐり、フレンドはアカウントに安全に保存されます。</p>
+          <button type="button" id="googleLogin" class="primary auth-google">Googleで続ける</button>
+          <div class="online-divider"><span>または</span></div>
+          <form id="emailLoginForm" class="email-login-form">
+            <label for="loginEmail">メールアドレス</label>
+            <div class="inline-input"><input id="loginEmail" name="email" type="email" required autocomplete="email" /><button class="secondary" type="submit">メールを送る</button></div>
+          </form>
+          <p id="authMessage" class="form-status" role="status"></p>
+          <small>続行すると利用規約とプライバシーポリシーに同意したものとみなされます。</small>
+        </div>
+        <div class="auth-card" id="profilePanel" hidden>
+          <span class="home-kicker">あと少し</span><h1>プレイヤー情報を決める</h1>
+          <form id="profileForm" class="profile-form">
+            <label>ユーザーID<input name="handle" pattern="[a-z0-9_]{3,20}" minlength="3" maxlength="20" required placeholder="forest_player" /></label>
+            <label>表示名<input name="displayName" maxlength="24" required placeholder="森のプレイヤー" /></label>
+            <label class="terms-check"><input name="termsAccepted" type="checkbox" required />利用規約とプライバシーポリシーに同意する</label>
+            <button class="primary" type="submit">登録してはじめる</button>
+          </form>
+          <p id="profileMessage" class="form-status" role="status"></p>
+        </div>
+      </section>
+      <div id="homeCommercialShell" hidden>
       <header class="home-header">
         <div class="brand-lockup home-brand">
           <img src="assets/app-icon-v2.png" alt="" />
           <div><strong>HIDDEN LINE</strong><span>アニマルライン</span></div>
         </div>
-        <button type="button" id="openHelpHome" class="text-button">遊び方</button>
+        <div class="home-account-actions"><button type="button" id="openHelpHome" class="text-button">遊び方</button><button type="button" id="openAccount" class="account-chip"><span id="profileName">プレイヤー</span><small id="profileHandle">@player</small></button></div>
       </header>
 
       <div class="home-intro">
@@ -25,93 +52,54 @@
           <h1>正体を隠した動物たちの、推理と駆け引きのボードゲーム</h1>
           <p>ルールはかんたん。勝敗のヒントから、相手の動物を見破ろう。</p>
           <div class="hero-actions">
-            <button type="submit" form="setup" id="heroStart" class="primary hero-start">AIとすぐ遊ぶ</button>
-            <span>登録不要 · 約5分</span>
+            <button type="button" id="rankedHeroStart" class="primary hero-start">ランクマッチを始める</button>
+            <span>カジュアル盤 · 約5分</span>
           </div>
         </div>
       </div>
 
       <form id="setup" class="home-form">
+        <section class="player-dashboard" aria-label="プレイヤー情報">
+          <div class="rank-badge"><span>現在のランク</span><strong id="rankName">小動物 III</strong><small id="rankRating">1000 RP</small></div>
+          <div class="currency-badge"><span aria-hidden="true">●</span><div><small>どんぐり</small><strong id="acornBalance">300</strong></div></div>
+          <div class="season-badge"><small>シーズン1</small><strong id="seasonDays">あと28日</strong></div>
+          <div class="dashboard-links"><button type="button" id="openLeaderboard" class="text-button">ランキング</button><button type="button" id="openShop" class="text-button">交換所</button></div>
+        </section>
         <div class="launcher-heading">
-          <div><span class="step-label">STEP 1</span><h2>対戦相手を選ぶ</h2></div>
-          <p>選んだら、すぐ配置へ進めます</p>
+          <div><span class="step-label">PLAY</span><h2>遊び方を選ぶ</h2></div>
+          <p>対戦はアカウントに記録されます</p>
         </div>
         <fieldset class="option-group">
           <legend class="sr-only">誰と遊びますか</legend>
           <div class="option-cards opponent-cards">
-            <label class="option-card">
-              <input type="radio" name="opponent" value="ai" checked />
+            <label class="option-card match-type-card">
+              <input type="radio" name="opponent" value="ranked" checked />
               <img class="opponent-icon" src="assets/piece-lion-v2.png" alt="" />
-              <span class="option-title">AIと対戦</span>
-              <span class="option-desc">ひとりで遊ぶ</span>
+              <span class="option-title">ランクマッチ</span>
+              <span class="option-desc">世界のプレイヤーと真剣勝負</span>
             </label>
-            <label class="option-card">
-              <input type="radio" name="opponent" value="human" />
+            <label class="option-card match-type-card">
+              <input type="radio" name="opponent" value="friend" />
               <span class="opponent-pair" aria-hidden="true"><img src="assets/piece-rabbit-v2.png" alt="" /><img src="assets/piece-fox-v2.png" alt="" /></span>
-              <span class="option-title">2人で対戦</span>
-              <span class="option-desc">1台の端末を交代で使う</span>
-            </label>
-            <label class="option-card">
-              <input type="radio" name="opponent" value="online" />
-              <img class="opponent-icon" src="assets/piece-eagle-v2.png" alt="" />
-              <span class="option-title">オンライン</span>
-              <span class="option-desc">ランダム・友達と対戦</span>
+              <span class="option-title">フレンドマッチ</span>
+              <span class="option-desc">友達とコードで合流</span>
             </label>
           </div>
         </fieldset>
 
-        <details class="launch-settings" id="gameSettings">
-          <summary><span><b>STEP 2</b> ゲーム設定</span><strong id="settingSummary">カジュアル · AI中級</strong></summary>
-        <fieldset class="option-group">
-          <legend>盤面を選びます</legend>
-          <div class="option-cards mode-cards">
-            <label class="option-card">
-              <input type="radio" name="mode" value="casual" checked />
-              <span class="option-title">カジュアル</span>
-              <span class="option-desc">4×7、11駒。約5分</span>
-            </label>
-            <label class="option-card">
-              <input type="radio" name="mode" value="classic" />
-              <span class="option-title">クラシック</span>
-              <span class="option-desc">8×9、31駒。約15分</span>
-            </label>
-          </div>
+        <fieldset class="option-group ranked-group" id="group-ranked">
+          <legend>ランクマッチ</legend>
+          <button type="button" id="onlineRandom" class="random-match-button primary">対戦相手を探す</button>
+          <p class="hint random-match-hint">20秒で見つからない場合は、同ランクのCPUと対戦します。</p>
         </fieldset>
-
-        <details class="advanced-settings" id="group-difficulty">
-          <summary>AIの強さ <span id="difficultySummary">中級</span></summary>
-          <fieldset class="option-group compact-group">
-            <legend class="sr-only">AIの強さ</legend>
-            <div class="option-cards difficulty-cards">
-              <label class="option-card">
-                <input type="radio" name="difficulty" value="beginner" />
-                <span class="option-title">初級</span>
-                <span class="option-desc">まだ正体を予測しない</span>
-              </label>
-              <label class="option-card">
-                <input type="radio" name="difficulty" value="intermediate" checked />
-                <span class="option-title">中級</span>
-                <span class="option-desc">戦闘と隣接リスクを判断する</span>
-              </label>
-              <label class="option-card">
-                <input type="radio" name="difficulty" value="advanced" />
-                <span class="option-title">上級</span>
-                <span class="option-desc">反撃・援護・本陣攻防まで読む</span>
-              </label>
-              <label class="option-card">
-                <input type="radio" name="difficulty" value="oni" />
-                <span class="option-title">鬼</span>
-                <span class="option-desc">ハンデとして敵駒を把握する</span>
-              </label>
-            </div>
-          </fieldset>
-        </details>
-        </details>
 
         <fieldset class="option-group online-group" id="group-online" hidden>
-          <legend>オンライン対戦</legend>
-          <button type="button" id="onlineRandom" class="random-match-button primary">ランダムマッチ</button>
-          <p class="hint random-match-hint">同じ盤面モードで待機中の相手と自動で対戦します。</p>
+          <legend>フレンドマッチ</legend>
+          <div class="friend-picker"><label for="friendSelect">フレンドから選ぶ</label><select id="friendSelect"><option value="">誰でも参加できる部屋</option></select></div>
+          <details class="friend-settings"><summary>盤面設定</summary><div class="option-cards mode-cards friend-mode-cards">
+            <label class="option-card"><input type="radio" name="friendMode" value="casual" checked /><span class="option-title">カジュアル</span><span class="option-desc">約5分</span></label>
+            <label class="option-card"><input type="radio" name="friendMode" value="classic" /><span class="option-title">クラシック</span><span class="option-desc">約15分</span></label>
+          </div></details>
           <div class="online-divider"><span>または</span></div>
           <div class="online-panel">
             <button type="button" id="onlineHost" class="primary">部屋を作る</button>
@@ -127,11 +115,8 @@
           <p id="onlineStatus" class="form-status" role="status"></p>
         </fieldset>
 
-        <div class="home-actions" id="homePrimaryActions">
-          <div class="selection-summary"><span>選択中</span><strong id="homeSelectionSummary">AI · カジュアル · 中級</strong></div>
-          <button type="submit" id="startGame" class="primary">この設定で配置へ</button>
-        </div>
       </form>
+      </div>
     </section>
 
     <section id="screen-lobby" class="screen">
@@ -279,6 +264,31 @@
         <button id="confirmCancel" type="button" class="secondary">キャンセル</button>
         <button id="confirmOk" type="button" class="danger-button">続ける</button>
       </div>
+    </dialog>
+
+    <dialog id="accountDialog" class="commercial-dialog">
+      <div class="dialog-heading"><div><span class="panel-label">MY PAGE</span><h2>マイページ</h2></div><button id="closeAccount" type="button" class="text-button">閉じる</button></div>
+      <p id="accountStats" class="account-stats">0勝 0敗 0分</p>
+      <section><h3>フレンド</h3><form id="friendSearchForm" class="inline-input"><input name="friendHandle" placeholder="@ユーザーID" required /><button type="submit" class="secondary">検索</button></form><div id="friendSearchResult" class="friend-search-result"></div><div id="friendList" class="friend-list"></div></section>
+      <section><h3>所持アイテム</h3><div id="accountInventory" class="inventory-list"><p class="hint">まだアイテムを持っていません。</p></div></section>
+      <section><h3>購入履歴</h3><div id="purchaseHistory" class="purchase-history"><p class="hint">購入履歴はありません。</p></div></section>
+      <section><h3>アカウント</h3><p class="hint">戦績・所持アイテム・購入履歴はこのアカウントに保存されます。</p><div class="dialog-actions"><button id="logoutButton" type="button" class="secondary">ログアウト</button><button id="deleteAccountButton" type="button" class="danger-button">アカウント削除</button></div><p id="deleteAccountMessage" class="form-status"></p></section>
+    </dialog>
+
+    <dialog id="leaderboardDialog" class="commercial-dialog">
+      <div class="dialog-heading"><div><span class="panel-label">SEASON RANKING</span><h2>ランキング</h2></div><button id="closeLeaderboard" type="button" class="text-button">閉じる</button></div>
+      <h3>あなたの前後</h3>
+      <ol id="nearbyLeaderboardList" class="leaderboard-list"></ol>
+      <h3>フレンド内順位</h3>
+      <ol id="friendLeaderboardList" class="leaderboard-list"></ol>
+      <h3>各ランク TOP 100</h3>
+      <ol id="leaderboardList" class="leaderboard-list"></ol>
+    </dialog>
+
+    <dialog id="shopDialog" class="commercial-dialog">
+      <div class="dialog-heading"><div><span class="panel-label">ACORN SHOP</span><h2>どんぐり交換所</h2></div><button id="closeShop" type="button" class="text-button">閉じる</button></div>
+      <section class="battle-pass-offer"><h3>シーズンパス</h3><div class="pass-cards"><button type="button" class="secondary" data-pass-tier="basic"><b>Basic</b><span>600円</span></button><button type="button" class="primary" data-pass-tier="premium"><b>Premium</b><span>1,200円</span></button></div></section>
+      <div id="shopList" class="shop-list"></div><p id="shopMessage" class="form-status" role="status"></p>
     </dialog>
 
     <script type="module" src="src/main.js"></script>

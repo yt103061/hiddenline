@@ -1,10 +1,12 @@
 import { generateLegalMoves, occupantAt, hqOwnerAt, hqCell, flagStrengthType, logicalNeighbors, pieceById } from './rules.js';
+import { CPU_RANK_CONFIGS } from './rank.js';
 
 export const DIFFICULTIES = {
   beginner: { depth: 1, inference: false, omniscient: false, noise: 8, aggression: 5, caution: 8 },
   intermediate: { depth: 1, inference: true, omniscient: false, noise: 3, aggression: 12, caution: 24 },
   advanced: { depth: 2, inference: true, omniscient: false, noise: 1, aggression: 16, caution: 34 },
   oni: { depth: 3, inference: true, omniscient: true, noise: 0, aggression: 18, caution: 42 },
+  ...CPU_RANK_CONFIGS,
 };
 
 export function chooseAiMove(state, data, combat, difficulty = 'intermediate') {
