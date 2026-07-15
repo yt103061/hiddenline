@@ -2,15 +2,16 @@ import boards from '../data/boards.json' with { type: 'json' };
 import piecesData from '../data/pieces.json' with { type: 'json' };
 import { bridgeEdges, waterRowY, hqOwnerAt } from './rules.js';
 
-export function createGame(mode = 'casual', preset = 'balanced') {
+export function buildFormation(mode = 'casual', preset = 'balanced', owner = 'south') {
   const board = boards[mode];
   const pieceList = piecesData.pieces.flatMap((piece) =>
     Array.from({ length: piece[`count_${mode}`] || 0 }, (_, index) => ({ type: piece.id, index })),
   );
+  return formation(pieceList, preset, owner, board);
+}
 
-  const south = formation(pieceList, preset, 'south', board);
-  const north = formation(pieceList, 'balanced', 'north', board);
-
+export function createGameFromFormations(mode = 'casual', south, north) {
+  const board = boards[mode];
   return {
     mode,
     board,
@@ -21,6 +22,12 @@ export function createGame(mode = 'casual', preset = 'balanced') {
     clocks: { south: boards.clockSec, north: boards.clockSec },
     pieces: [...south, ...north],
   };
+}
+
+export function createGame(mode = 'casual', preset = 'balanced') {
+  const south = buildFormation(mode, preset, 'south');
+  const north = buildFormation(mode, 'balanced', 'north');
+  return createGameFromFormations(mode, south, north);
 }
 
 export function formation(pieceList, preset, owner, board) {
@@ -88,6 +95,16 @@ export function revealForViewer(state, viewer) {
       hidden: piece.owner !== viewer && !piece.revealed && piece.alive,
     })),
   };
+}
+
+export function swapFormationPieces(formation, indexA, indexB) {
+  const newFormation = [...formation];
+  if (indexA >= 0 && indexB >= 0 && indexA < newFormation.length && indexB < newFormation.length) {
+    const temp = newFormation[indexA];
+    newFormation[indexA] = newFormation[indexB];
+    newFormation[indexB] = temp;
+  }
+  return newFormation;
 }
 
 function keepStaticPiecesOffBridgeEnds(sorted, cells, board) {
