@@ -100,9 +100,10 @@ export function revealForViewer(state, viewer) {
 export function swapFormationPieces(formation, indexA, indexB) {
   const newFormation = [...formation];
   if (indexA >= 0 && indexB >= 0 && indexA < newFormation.length && indexB < newFormation.length) {
-    const temp = newFormation[indexA];
-    newFormation[indexA] = newFormation[indexB];
-    newFormation[indexB] = temp;
+    const a = newFormation[indexA];
+    const b = newFormation[indexB];
+    newFormation[indexA] = { ...a, x: b.x, y: b.y };
+    newFormation[indexB] = { ...b, x: a.x, y: a.y };
   }
   return newFormation;
 }

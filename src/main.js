@@ -31,6 +31,7 @@ const setup = {
   formations: {},
   selected: null,
   editingOwner: 'south',
+  awaitingHandover: false,
 };
 
 const el = {
@@ -73,21 +74,7 @@ function redraw() {
 
 function newGame() {
   cancelPendingAi();
-  if (settings.opponent === 'ai') {
-    startSetupScreen();
-  } else {
-    state = createGame(settings.mode, settings.preset);
-    ui.names = playerNames(settings.opponent);
-    ui.viewer = 'south';
-    ui.selected = null;
-    ui.selectedMoves = [];
-    ui.lastMove = null;
-    ui.busy = false;
-    el.handover.hidden = true;
-    show('game');
-    redraw();
-    message(turnMessage(state, ui.names, settings.opponent));
-  }
+  startSetupScreen();
 }
 
 function deselect() {
@@ -194,6 +181,13 @@ function showHandover(battle) {
 
 el.handoverOk.onclick = () => {
   el.handover.hidden = true;
+  if (setup.active && setup.awaitingHandover) {
+    setup.awaitingHandover = false;
+    setup.editingOwner = 'north';
+    setup.selected = null;
+    renderSetupBoard();
+    return;
+  }
   ui.viewer = state.turn;
   redraw();
   message(turnMessage(state, ui.names, settings.opponent));
@@ -259,11 +253,24 @@ document.querySelector('#closeHelp').onclick = () => document.querySelector('#he
 function startSetupScreen() {
   setup.active = true;
   setup.editingOwner = 'south';
+  setup.awaitingHandover = false;
   setup.formations.south = buildFormation(settings.mode, settings.preset, 'south');
   setup.formations.north = buildFormation(settings.mode, 'balanced', 'north');
   setup.selected = null;
   renderSetupBoard();
   show('setup');
+}
+
+function setupPlayerNames() {
+  return playerNames(settings.opponent);
+}
+
+function updateSetupStatus() {
+  const names = setupPlayerNames();
+  const who = settings.opponent === 'ai' ? 'あなた' : names[setup.editingOwner];
+  el.setupStatus.textContent = `${who}の駒を並べてください。駒を2つタップすると入れ替わります。`;
+  const startBtn = document.querySelector('#setupStart');
+  startBtn.textContent = settings.opponent === 'human' && setup.editingOwner === 'south' ? '次のプレイヤーへ' : '対局開始';
 }
 
 function renderSetupBoard() {
@@ -272,8 +279,10 @@ function renderSetupBoard() {
     board,
     pieces: setup.formations[setup.editingOwner] || [],
   };
-  renderBoard(el.setupBoard, mockState, piecesData, { viewer: setup.editingOwner, selected: setup.selected }, { onCell: onSetupCell });
+  renderBoard(el.setupBoard, mockState, piecesData, { viewer: setup.editingOwner, selected: setup.selected, selectedMoves: [], names: setupPlayerNames() }, { onCell: onSetupCell });
+  updateSelection(el.setupBoard, { selected: setup.selected, selectedMoves: [] });
   renderOverlay(el.setupBridges, board, setup.editingOwner);
+  updateSetupStatus();
 }
 
 function onSetupCell(x, y, piece) {
@@ -331,6 +340,18 @@ document.querySelector('#setupDefense').onclick = () => applyPreset('defense');
 document.querySelector('#setupShuffle').onclick = () => shuffleFormation();
 
 document.querySelector('#setupStart').onclick = () => {
+  if (settings.opponent === 'human' && setup.editingOwner === 'south') {
+    setup.awaitingHandover = true;
+    const names = setupPlayerNames();
+    el.handoverText.textContent = `${names.north}の番です。端末を渡してください。`;
+    el.handover.hidden = false;
+    el.handoverOk.focus();
+    return;
+  }
+  finishSetupAndStartGame();
+};
+
+function finishSetupAndStartGame() {
   setup.active = false;
   state = createGameFromFormations(settings.mode, setup.formations.south, setup.formations.north);
   ui.names = playerNames(settings.opponent);
@@ -343,6 +364,6 @@ document.querySelector('#setupStart').onclick = () => {
   show('game');
   redraw();
   message(turnMessage(state, ui.names, settings.opponent));
-};
+}
 
 show('home');

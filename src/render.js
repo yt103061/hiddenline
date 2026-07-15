@@ -120,21 +120,43 @@ export function renderOverlay(svgEl, board, viewer) {
     })
     .join('');
 
-  const hqCols = board.hqCols ?? [];
-  const hqAreas = hqCols.length
-    ? ['south', 'north'].map((owner) => {
-      const y = owner === 'south' ? board.rows - 1 : 0;
-      const centers = hqCols.map((hqX) => cx(hqX));
-      const centerX = (Math.min(...centers) + Math.max(...centers)) / 2;
-      const left = centerX - hqCols.length / 2 + 0.08;
-      const top = cy(y) - 0.42;
-      return `
-        <rect class="hq-area ${owner}" x="${left}" y="${top}" width="${hqCols.length - 0.16}" height="0.84" rx="0.18" />
-        <text class="hq-icon" x="${centerX}" y="${cy(y) + 0.2}" text-anchor="middle">🪺</text>`;
-    }).join('')
-    : '';
+  svgEl.innerHTML = bridges;
+  renderHqLayer(svgEl, board, viewer);
+}
 
-  svgEl.innerHTML = bridges + hqAreas;
+function renderHqLayer(svgEl, board, viewer) {
+  const parent = svgEl.parentElement;
+  if (!parent) return;
+
+  let hqLayer = parent.querySelector(':scope > .hq-layer');
+  if (!hqLayer) {
+    hqLayer = document.createElement('div');
+    hqLayer.className = 'hq-layer';
+    hqLayer.setAttribute('aria-hidden', 'true');
+    parent.appendChild(hqLayer);
+  }
+
+  const hqCols = board.hqCols ?? [];
+  if (!hqCols.length) {
+    hqLayer.innerHTML = '';
+    return;
+  }
+
+  const flip = viewer === 'north';
+  const colOf = (x) => (flip ? board.cols - 1 - x : x);
+
+  hqLayer.innerHTML = ['south', 'north'].map((owner) => {
+    const y = owner === 'south' ? board.rows - 1 : 0;
+    const row = flip ? board.rows - 1 - y : y;
+    const cols = hqCols.map(colOf).sort((a, b) => a - b);
+    const left = (cols[0] / board.cols) * 100;
+    const width = ((cols[cols.length - 1] + 1 - cols[0]) / board.cols) * 100;
+    const top = (row / board.rows) * 100;
+    const height = (1 / board.rows) * 100;
+    return `<div class="hq-marker ${owner}" style="left:${left}%; top:${top}%; width:${width}%; height:${height}%">
+      <span class="hq-marker-icon">🪺</span>
+    </div>`;
+  }).join('');
 }
 
 export function renderHud(el, state, data, ui) {
