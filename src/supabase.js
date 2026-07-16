@@ -25,3 +25,17 @@ export async function invokeRpc(name, args = {}) {
   if (error) throw error;
   return data;
 }
+
+export async function invokeFunction(name, options = {}) {
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError || !session?.access_token) {
+    return { data: null, error: sessionError || new Error('ログインセッションを確認できません。もう一度ログインしてください。') };
+  }
+  return supabase.functions.invoke(name, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+}

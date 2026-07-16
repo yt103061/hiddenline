@@ -9,7 +9,7 @@ import { animateMove, showBattleCutIn } from './fx.js';
 import { openGuide } from './guide.js';
 import { OnlineRoom, RandomMatchmaker, generateRoomCode } from './online.js';
 import { initializeCommercialUI, trackEvent } from './commercial.js';
-import { supabase, invokeRpc } from './supabase.js';
+import { supabase, invokeFunction, invokeRpc } from './supabase.js';
 import { hasAuthCallbackInUrl } from './auth-callback.js';
 import {
   playerNames, turnMessage, selectMessage, battleMessage,
@@ -374,7 +374,7 @@ async function applyServerMove(move, nextState) {
 }
 
 async function fetchMatchView() {
-  const { data, error } = await supabase.functions.invoke('get-match-view', { body: { matchId: online.matchId } });
+  const { data, error } = await invokeFunction('get-match-view', { body: { matchId: online.matchId } });
   if (error) throw error;
   online.sequence = Number(data.sequence) || online.sequence;
   return data;
@@ -382,7 +382,7 @@ async function fetchMatchView() {
 
 async function playMove(move) {
   if (online.matchId) {
-    const { data, error } = await supabase.functions.invoke('submit-move', {
+    const { data, error } = await invokeFunction('submit-move', {
       body: { matchId: online.matchId, sequence: online.sequence, move },
     });
     if (error) {
@@ -496,7 +496,7 @@ function finishGame() {
   trackEvent('match_completed', { opponent: settings.opponent, result: state.winner === 'draw' ? 'draw' : state.winner === ui.viewer ? 'win' : 'loss' });
   localStorage.removeItem(ONLINE_RECONNECT_KEY);
   if (online.matchId) {
-    supabase.functions.invoke('finalize-match', {
+    invokeFunction('finalize-match', {
       body: { matchId: online.matchId },
     }).catch(() => {});
   }
@@ -534,7 +534,7 @@ document.querySelector('#resign').onclick = async () => {
   const loser = settings.opponent === 'ai' || settings.opponent === 'ranked_cpu' ? 'south' : ui.viewer;
   if (!await askConfirm(`${ui.names[loser]}が投了します。よろしいですか？`, '投了しますか')) return;
   if (online.matchId) {
-    const { error } = await supabase.functions.invoke('resign-match', { body: { matchId: online.matchId } });
+    const { error } = await invokeFunction('resign-match', { body: { matchId: online.matchId } });
     if (error) {
       gameMessage('投了をサーバーへ送信できませんでした。もう一度お試しください。');
       return;
@@ -579,7 +579,7 @@ function leaveOnlineRoom() {
   if (online.room) {
     if (state && !state.winner) {
       online.room.send('resign');
-      if (online.matchId) supabase.functions.invoke('resign-match', { body: { matchId: online.matchId } }).catch(() => {});
+      if (online.matchId) invokeFunction('resign-match', { body: { matchId: online.matchId } }).catch(() => {});
     }
     online.room.leave();
   }
@@ -684,7 +684,7 @@ async function resumeOnlineMatch() {
 
 function startMatchHeartbeat() {
   clearInterval(online.heartbeatTimer);
-  const send = () => online.matchId && supabase.functions.invoke('match-heartbeat', { body: { matchId: online.matchId } }).catch(() => {});
+  const send = () => online.matchId && invokeFunction('match-heartbeat', { body: { matchId: online.matchId } }).catch(() => {});
   send();
   online.heartbeatTimer = setInterval(send, 15000);
 }
@@ -695,7 +695,7 @@ function waitForOpponentReconnect() {
   status.textContent = '相手との接続が切れました。60秒間、再接続を待ちます…';
   online.reconnectTimer = setTimeout(async () => {
     online.reconnectTimer = null;
-    const { data, error } = await supabase.functions.invoke('claim-disconnect', { body: { matchId: online.matchId } });
+    const { data, error } = await invokeFunction('claim-disconnect', { body: { matchId: online.matchId } });
     if (error || data?.status === 'waiting') {
       status.textContent = '相手の再接続を引き続き待っています…';
       waitForOpponentReconnect();
@@ -986,7 +986,7 @@ document.querySelector('#setupStart').onclick = async () => {
   if (online.active) {
     if (online.ready) return;
     online.myFormation = setup.formations[online.myRole];
-    const { data, error } = await supabase.functions.invoke('submit-formation', {
+    const { data, error } = await invokeFunction('submit-formation', {
       body: { matchId: online.matchId, formation: online.myFormation },
     });
     if (error) {
@@ -1002,7 +1002,7 @@ document.querySelector('#setupStart').onclick = async () => {
   }
 
   if (online.isCpu && online.matchId) {
-    const { data, error } = await supabase.functions.invoke('submit-formation', {
+    const { data, error } = await invokeFunction('submit-formation', {
       body: { matchId: online.matchId, formation: setup.formations.south },
     });
     if (error) {
@@ -1027,7 +1027,7 @@ async function finishSetupAndStartGame() {
   setup.active = false;
   const firstTurn = chooseFirstTurn();
   if (online.isCpu && online.matchId) {
-    const { data, error } = await supabase.functions.invoke('start-match', { body: { matchId: online.matchId, firstTurn } });
+    const { data, error } = await invokeFunction('start-match', { body: { matchId: online.matchId, firstTurn } });
     if (error) {
       el.setupStatus.textContent = 'CPU対局を開始できませんでした。';
       setup.active = true;
@@ -1059,7 +1059,7 @@ async function finishSetupAndStartGame() {
   gameMessage(turnMessage(state, ui.names, settings.opponent));
   persistSession('game');
   if (online.isCpu && state.turn === 'north') {
-    const { data, error } = await supabase.functions.invoke('cpu-move', { body: { matchId: online.matchId, sequence: online.sequence } });
+    const { data, error } = await invokeFunction('cpu-move', { body: { matchId: online.matchId, sequence: online.sequence } });
     if (error) gameMessage('CPUの初手を取得できませんでした。再接続してください。');
     else {
       online.sequence = Number(data.sequence) || online.sequence + 1;
@@ -1102,7 +1102,7 @@ async function maybeStartOnlineGame() {
   if (!online.isHost || online.startSent) return;
   online.startSent = true;
   const firstTurn = chooseFirstTurn();
-  const { data, error } = await supabase.functions.invoke('start-match', { body: { matchId: online.matchId, firstTurn } });
+  const { data, error } = await invokeFunction('start-match', { body: { matchId: online.matchId, firstTurn } });
   if (error) {
     online.startSent = false;
     el.setupStatus.textContent = '対局を開始できませんでした。';

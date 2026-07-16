@@ -6,15 +6,11 @@ export const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-function keyFromJson(name: string, fallback: string) {
-  const raw = Deno.env.get(name);
-  if (!raw) return Deno.env.get(fallback) || '';
-  try { return JSON.parse(raw).default || Object.values(JSON.parse(raw))[0] || ''; } catch { return raw; }
-}
-
 export const url = Deno.env.get('SUPABASE_URL') || '';
-export const publishableKey = keyFromJson('SUPABASE_PUBLISHABLE_KEYS', 'SUPABASE_ANON_KEY');
-export const secretKey = keyFromJson('SUPABASE_SECRET_KEYS', 'SUPABASE_SERVICE_ROLE_KEY');
+// Edge Functions receive these stable built-in secrets directly. The plural
+// key-list variables are key metadata and must not be parsed as credentials.
+export const publishableKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+export const secretKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 export const admin = createClient(url, secretKey, { auth: { persistSession: false } });
 
 export function json(body: unknown, status = 200) {

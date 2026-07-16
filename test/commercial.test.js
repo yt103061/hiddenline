@@ -41,6 +41,8 @@ assert.match(migration, /interval '60 seconds'/, 'disconnect forfeits require a 
 assert.doesNotMatch(config, /eyJ[a-zA-Z0-9_-]{20,}/, 'legacy JWT is not committed');
 assert.equal(packageJson.dependencies['@supabase/supabase-js'], '2.100.0');
 assert.equal(packageJson.devDependencies.vite, '8.1.4');
+assert.match(main, /invokeFunction\('submit-formation'/, 'formation submission uses an authenticated function call');
+assert.doesNotMatch(main, /supabase\.functions\.invoke/, 'game function calls use the authenticated wrapper');
 
 assert.equal(hasAuthCallbackInUrl({ hash: '#access_token=test', search: '' }), true, 'OAuth hash callbacks are preserved');
 assert.equal(hasAuthCallbackInUrl({ hash: '', search: '?code=pkce-code' }), true, 'PKCE callbacks are preserved');

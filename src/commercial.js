@@ -1,4 +1,4 @@
-import { supabase, backendConfigured, currentUser, invokeRpc } from './supabase.js';
+import { supabase, backendConfigured, currentUser, invokeFunction, invokeRpc } from './supabase.js';
 import { rankForRating } from './rank.js';
 import { authCallbackError, clearAuthCallbackUrl, hasAuthCallbackInUrl } from './auth-callback.js';
 
@@ -246,7 +246,7 @@ async function equipItem(button) {
 
 async function startCheckout(tier) {
   trackEvent('checkout_started', { tier });
-  const { data, error } = await supabase.functions.invoke('create-checkout', { body: { tier } });
+  const { data, error } = await invokeFunction('create-checkout', { body: { tier } });
   if (error || !data?.url) { setText('#shopMessage', '決済を開始できませんでした。'); return; }
   location.assign(data.url);
 }
@@ -257,7 +257,7 @@ async function deleteAccount(event) {
     button.dataset.confirmed = 'true'; button.textContent = 'もう一度押して削除';
     setText('#deleteAccountMessage', '削除すると戦績やアイテムは元に戻せません。'); return;
   }
-  const { error } = await supabase.functions.invoke('delete-account');
+  const { error } = await invokeFunction('delete-account');
   if (error) { setText('#deleteAccountMessage', '削除できませんでした。'); return; }
   await supabase.auth.signOut();
   location.reload();
