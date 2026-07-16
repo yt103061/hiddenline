@@ -1,5 +1,6 @@
 import { supabase, backendConfigured, currentUser, invokeRpc } from './supabase.js';
 import { rankForRating } from './rank.js';
+import { authCallbackError, clearAuthCallbackUrl, hasAuthCallbackInUrl } from './auth-callback.js';
 
 let dashboard = null;
 const CUSTOM_PRESETS_KEY = 'hiddenline-custom-presets-v1';
@@ -21,10 +22,6 @@ export async function initializeCommercialUI() {
     return null;
   }
 
-  const { data: { session } } = await supabase.auth.getSession();
-  await applySession(session);
-  supabase.auth.onAuthStateChange((_event, nextSession) => queueMicrotask(() => applySession(nextSession)));
-
   document.querySelector('#googleLogin').onclick = signInGoogle;
   document.querySelector('#emailLoginForm').onsubmit = signInEmail;
   document.querySelector('#profileForm').onsubmit = saveProfile;
@@ -38,6 +35,24 @@ export async function initializeCommercialUI() {
   document.querySelector('#friendSearchForm').onsubmit = searchFriend;
   document.querySelector('#deleteAccountButton').onclick = deleteAccount;
   for (const button of document.querySelectorAll('[data-pass-tier]')) button.onclick = () => startCheckout(button.dataset.passTier);
+
+  const callbackPending = hasAuthCallbackInUrl();
+  const callbackError = authCallbackError();
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  if (callbackError) {
+    setText('#authMessage', `Googleログインを完了できませんでした: ${decodeURIComponent(callbackError.replace(/\+/g, ' '))}`);
+  }
+  if (session && callbackPending) clearAuthCallbackUrl();
+  await applySession(session);
+  supabase.auth.onAuthStateChange((_event, nextSession) => queueMicrotask(async () => {
+    try {
+      if (nextSession && hasAuthCallbackInUrl()) clearAuthCallbackUrl();
+      await applySession(nextSession);
+    } catch (authError) {
+      setText('#authMessage', `アカウント情報を読み込めませんでした: ${authError.message}`);
+    }
+  }));
   return session;
 }
 

@@ -10,6 +10,7 @@ import { openGuide } from './guide.js';
 import { OnlineRoom, RandomMatchmaker, generateRoomCode } from './online.js';
 import { initializeCommercialUI, trackEvent } from './commercial.js';
 import { supabase, invokeRpc } from './supabase.js';
+import { hasAuthCallbackInUrl } from './auth-callback.js';
 import {
   playerNames, turnMessage, selectMessage, battleMessage,
   inspectMessage, resultTitle, resultReason, opponentOf,
@@ -1363,7 +1364,12 @@ window.addEventListener('popstate', (event) => {
   show(target, { record: false });
 });
 
-if (!restoreSession()) show('home', { replace: true });
+if (!restoreSession()) {
+  // Supabase reads OAuth credentials from the callback URL asynchronously.
+  // Replacing the URL here would erase them before the session is persisted.
+  if (hasAuthCallbackInUrl()) document.body.dataset.screen = 'home';
+  else show('home', { replace: true });
+}
 initializeCommercialUI().then((session) => {
   if (session) resumeOnlineMatch();
 }).catch((error) => {

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
+import { authCallbackError, hasAuthCallbackInUrl } from '../src/auth-callback.js';
 
 const [html, migration, config, packageJson] = await Promise.all([
   readFile(new URL('../index.html', import.meta.url), 'utf8'),
@@ -40,5 +41,11 @@ assert.match(migration, /interval '60 seconds'/, 'disconnect forfeits require a 
 assert.doesNotMatch(config, /eyJ[a-zA-Z0-9_-]{20,}/, 'legacy JWT is not committed');
 assert.equal(packageJson.dependencies['@supabase/supabase-js'], '2.100.0');
 assert.equal(packageJson.devDependencies.vite, '8.1.4');
+
+assert.equal(hasAuthCallbackInUrl({ hash: '#access_token=test', search: '' }), true, 'OAuth hash callbacks are preserved');
+assert.equal(hasAuthCallbackInUrl({ hash: '', search: '?code=pkce-code' }), true, 'PKCE callbacks are preserved');
+assert.equal(hasAuthCallbackInUrl({ hash: '#home', search: '' }), false, 'normal screen hashes are not treated as auth callbacks');
+assert.equal(authCallbackError({ hash: '#error_description=Access+denied', search: '' }), 'Access denied');
+assert.match(main, /hasAuthCallbackInUrl\(\)/, 'initial navigation does not erase an OAuth callback');
 
 console.log('commercial auth, ranked, economy, RLS, and Edge Function contracts passed');
